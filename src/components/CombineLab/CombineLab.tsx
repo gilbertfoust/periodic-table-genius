@@ -1,9 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSelection } from '@/state/selectionStore';
 import { byZ, type Element } from '@/data/elements';
 import { REACTIONS } from '@/data/reactions';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
-import { predictCombination, type Confidence } from '@/utils/interactionPredictor';
+import { predictCombination, type Confidence, type CombinePrediction } from '@/utils/interactionPredictor';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,10 @@ const CONFIDENCE_STYLES: Record<Confidence, { border: string; text: string; labe
 
 interface CombineLabProps {
   onSendToMixtureLab?: (reactionId: string) => void;
+  onPredictionChange?: (prediction: CombinePrediction | null) => void;
 }
 
-export function CombineLab({ onSendToMixtureLab }: CombineLabProps) {
+export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLabProps) {
   const { selectedElements } = useSelection();
   const [slots, setSlots] = useState<(number | null)[]>([null, null]);
 
@@ -66,6 +67,11 @@ export function CombineLab({ onSendToMixtureLab }: CombineLabProps) {
   );
 
   const confidenceStyle = prediction ? CONFIDENCE_STYLES[prediction.confidence] : null;
+
+  // Notify parent of prediction changes
+  useEffect(() => {
+    onPredictionChange?.(prediction);
+  }, [prediction, onPredictionChange]);
 
   // Elements available for assignment (in selection but not yet in a slot)
   const unassigned = useMemo(() =>
