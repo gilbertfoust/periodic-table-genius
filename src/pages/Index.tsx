@@ -1,13 +1,33 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { SelectionProvider } from '@/state/useSelectionStore';
+import { Header } from '@/components/Header';
+import { PeriodicTable } from '@/components/PeriodicTable/PeriodicTable';
+import { SelectionTray } from '@/components/SelectionTray';
+import { ElementTutor } from '@/components/ElementTutor/ElementTutor';
+import { MixtureLab } from '@/components/MixtureLab/MixtureLab';
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <SelectionProvider>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-[1400px] mx-auto px-4 py-6">
+          <Header />
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-4 items-start">
+            <div>
+              <PeriodicTable />
+              <SelectionTray />
+            </div>
+            <ElementTutor />
+          </div>
+
+          <MixtureLab />
+
+          <footer className="mt-4 text-xs text-muted-foreground">
+            Next extensions that would fit well: more overlays (atomic radius, ionization energy), more reaction families, and a lesson path that saves progress.
+          </footer>
+        </div>
       </div>
-    </div>
+    </SelectionProvider>
   );
 };
 
