@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { REACTIONS, type Reaction } from '@/data/reactions';
 import { runStoichiometry, getExampleValues, type MixtureResult } from '@/utils/stoichiometry';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -7,13 +7,28 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { VisualOutcome } from './VisualOutcome';
 
-export function MixtureLab() {
+interface MixtureLabProps {
+  prefillReactionId?: string | null;
+}
+
+export function MixtureLab({ prefillReactionId }: MixtureLabProps) {
   const [rxnId, setRxnId] = useState(REACTIONS[0]?.id || '');
   const [a1, setA1] = useState('');
   const [a2, setA2] = useState('');
   const [b1, setB1] = useState('');
   const [b2, setB2] = useState('');
   const [result, setResult] = useState<MixtureResult | null>(null);
+
+  // Handle prefill from Combine Lab
+  useEffect(() => {
+    if (prefillReactionId && REACTIONS.find(r => r.id === prefillReactionId)) {
+      setRxnId(prefillReactionId);
+      const rxn = REACTIONS.find(r => r.id === prefillReactionId)!;
+      const vals = getExampleValues(rxn);
+      setA1(vals.a1); setA2(vals.a2); setB1(vals.b1); setB2(vals.b2);
+      setResult(null);
+    }
+  }, [prefillReactionId]);
 
   const rxn = useMemo(() => REACTIONS.find(r => r.id === rxnId) || null, [rxnId]);
   const modeA = rxn?.A.mode || 'solution';
