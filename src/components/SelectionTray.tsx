@@ -12,14 +12,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+export type DemoKey = 'ionic' | 'covalent' | 'precip' | 'hcl_polar' | 'na_o_ionic' | 'fe_o_uncertain';
+
 interface SelectionTrayProps {
-  onDemoScenario?: (scenario: 'ionic' | 'covalent' | 'precip') => void;
+  onDemoScenario?: (scenario: DemoKey) => void;
 }
 
-const DEMOS = [
-  { key: 'ionic' as const, label: 'Na + Cl → Ionic bond', zs: [11, 17] },
-  { key: 'covalent' as const, label: 'C + O → Polar covalent', zs: [6, 8] },
-  { key: 'precip' as const, label: 'Ag + Cl → Precipitation (lattice)', zs: [47, 17] },
+const DEMOS: { key: DemoKey; label: string; zs: number[] }[] = [
+  { key: 'ionic', label: 'Na + Cl → Ionic bond', zs: [11, 17] },
+  { key: 'covalent', label: 'C + O → Polar covalent', zs: [6, 8] },
+  { key: 'precip', label: 'Ag + Cl → Precipitation (lattice)', zs: [47, 17] },
+  { key: 'hcl_polar', label: 'H + Cl → Polar covalent (dipole)', zs: [1, 17] },
+  { key: 'na_o_ionic', label: 'Na + O → Ionic tendency', zs: [11, 8] },
+  { key: 'fe_o_uncertain', label: 'Fe + O → Uncertain', zs: [26, 8] },
 ];
 
 export function SelectionTray({ onDemoScenario }: SelectionTrayProps) {
@@ -46,8 +51,8 @@ export function SelectionTray({ onDemoScenario }: SelectionTrayProps) {
       {/* Demo scenarios */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-7 text-xs">
-            Demo scenarios
+      <Button variant="outline" size="sm" className="h-7 text-xs">
+            Tutorial presets
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="bg-popover border-border z-50">

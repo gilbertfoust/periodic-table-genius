@@ -3,11 +3,15 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import type { Element } from '@/data/elements';
 import type { Group } from 'three';
+import type { SceneControls } from '@/types/learningLayers';
 
-interface Props { element: Element }
+interface Props {
+  element: Element;
+  controls: SceneControls;
+}
 
 /** Simplified 2-8-8-18… shell filling */
-function getShellElectrons(Z: number): number[] {
+export function getShellElectrons(Z: number): number[] {
   const maxPerShell = [2, 8, 8, 18, 18, 32, 32];
   const shells: number[] = [];
   let remaining = Z;
@@ -26,12 +30,17 @@ export function getAtomCaption(el: Element): string {
   return `Atom model of ${el.name} (Z=${el.Z}) showing ${shells.length} electron shell${shells.length > 1 ? 's' : ''}. The ${valence} valence electron${valence !== 1 ? 's' : ''} (green) determine bonding behavior.`;
 }
 
-export function AtomStructureScene({ element }: Props) {
+export function AtomStructureScene({ element, controls }: Props) {
   const groupRef = useRef<Group>(null);
   const shells = useMemo(() => getShellElectrons(element.Z), [element.Z]);
+  const valence = shells[shells.length - 1] ?? 0;
+  const showValenceHighlight = controls.overlays['valenceHighlight'] !== false; // on by default
+  const showOctetRing = !!controls.overlays['octetRing'];
+  const isMainGroup = element.group !== null && [1,2,13,14,15,16,17,18].includes(element.group);
 
   useFrame((_, delta) => {
-    if (groupRef.current) groupRef.current.rotation.y += delta * 0.3;
+    if (controls.paused) return;
+    if (groupRef.current) groupRef.current.rotation.y += delta * 0.3 * controls.speed;
   });
 
   return (
@@ -61,16 +70,41 @@ export function AtomStructureScene({ element }: Props) {
             {/* Electrons */}
             {Array.from({ length: count }).map((_, eIdx) => {
               const angle = (eIdx / count) * Math.PI * 2;
+              const color = isValence && showValenceHighlight ? '#10b981' : '#3b82f6';
               return (
                 <mesh key={eIdx} position={[Math.cos(angle) * radius, 0, Math.sin(angle) * radius]}>
                   <sphereGeometry args={[0.08, 8, 8]} />
-                  <meshStandardMaterial color={isValence ? '#10b981' : '#3b82f6'} />
+                  <meshStandardMaterial color={color} />
                 </mesh>
               );
             })}
           </group>
         );
       })}
+
+      {/* Octet target ring overlay */}
+      {showOctetRing && (
+        <group>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.9 + (shells.length - 1) * 0.7 + 0.15, 0.008, 8, 48]} />
+            <meshStandardMaterial color={isMainGroup ? '#fbbf24' : '#ef4444'} transparent opacity={0.5} />
+          </mesh>
+          {!isMainGroup && (
+            <Html center position={[0, -1.8, 0]} distanceFactor={8}>
+              <span style={{ color: '#fbbf24', fontSize: 9, pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+                Octet rule has exceptions
+              </span>
+            </Html>
+          )}
+        </group>
+      )}
     </group>
   );
+}
+
+/** Extra data for the HTML panel */
+export function getAtomAccountingData(el: Element) {
+  const shells = getShellElectrons(el.Z);
+  const valence = shells[shells.length - 1] ?? 0;
+  return { shells, valence, shellLabel: shells.join(' | ') };
 }

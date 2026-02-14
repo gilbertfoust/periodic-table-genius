@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { SelectionProvider } from '@/state/selectionStore';
+import type { DemoKey } from '@/components/SelectionTray';
 import { Header } from '@/components/Header';
 import { PeriodicTable } from '@/components/PeriodicTable/PeriodicTable';
 import { SelectionTray } from '@/components/SelectionTray';
@@ -22,9 +23,8 @@ const Index = () => {
     }, 100);
   }, []);
 
-  const handleDemoScenario = useCallback((scenario: 'ionic' | 'covalent' | 'precip') => {
+  const handleDemoScenario = useCallback((scenario: DemoKey) => {
     if (scenario === 'precip') {
-      // Prefill Mixture Lab with precip_agcl reaction
       handleSendToMixtureLab('precip_agcl');
     }
   }, [handleSendToMixtureLab]);
