@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { useSelection } from '@/state/useSelectionStore';
+import { useSelection } from '@/state/selectionStore';
 import { byZ } from '@/data/elements';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { Badge } from '@/components/ui/badge';

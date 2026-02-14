@@ -1,4 +1,4 @@
-import { useSelection } from '@/state/useSelectionStore';
+import { useSelection } from '@/state/selectionStore';
 import { CATEGORY_COLORS, CATEGORY_ORDER } from '@/data/categoryColors';
 
 export function Legend() {

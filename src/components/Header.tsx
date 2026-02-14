@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useSelection } from '@/state/useSelectionStore';
+import { useSelection } from '@/state/selectionStore';
 import { findElement } from '@/utils/elementHelpers';
 
 export function Header() {

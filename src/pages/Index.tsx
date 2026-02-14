@@ -1,10 +1,11 @@
-import { SelectionProvider } from '@/state/useSelectionStore';
+import { SelectionProvider } from '@/state/selectionStore';
 import { Header } from '@/components/Header';
 import { PeriodicTable } from '@/components/PeriodicTable/PeriodicTable';
 import { SelectionTray } from '@/components/SelectionTray';
 import { ElementTutor } from '@/components/ElementTutor/ElementTutor';
 import { MixtureLab } from '@/components/MixtureLab/MixtureLab';
 
+/* Chemistry Learning Lab – main layout */
 const Index = () => {
   return (
     <SelectionProvider>
