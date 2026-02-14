@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { SelectionProvider } from '@/state/selectionStore';
 import { Header } from '@/components/Header';
 import { PeriodicTable } from '@/components/PeriodicTable/PeriodicTable';
@@ -7,17 +7,32 @@ import { ElementTutor } from '@/components/ElementTutor/ElementTutor';
 import { InteractionInspector } from '@/components/InteractionInspector/InteractionInspector';
 import { CombineLab } from '@/components/CombineLab/CombineLab';
 import { MixtureLab } from '@/components/MixtureLab/MixtureLab';
+import { TutorialCanvas } from '@/components/TutorialCanvas/TutorialCanvas';
+import { REACTIONS } from '@/data/reactions';
+import type { CombinePrediction } from '@/utils/interactionPredictor';
 
 const Index = () => {
   const [prefillReactionId, setPrefillReactionId] = useState<string | null>(null);
+  const [combinePrediction, setCombinePrediction] = useState<CombinePrediction | null>(null);
 
   const handleSendToMixtureLab = useCallback((reactionId: string) => {
     setPrefillReactionId(reactionId);
-    // Scroll to Mixture Lab
     setTimeout(() => {
       document.getElementById('mixture-lab')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   }, []);
+
+  const showLattice = useMemo(() =>
+    combinePrediction !== null
+    && combinePrediction.matchedReactionId !== null
+    && REACTIONS.find(r => r.id === combinePrediction.matchedReactionId)?.visuals.kind === 'precip',
+    [combinePrediction]
+  );
+
+  const latticeElements = useMemo(() =>
+    showLattice && combinePrediction ? combinePrediction.elements : [],
+    [showLattice, combinePrediction]
+  );
 
   return (
     <SelectionProvider>
@@ -32,11 +47,12 @@ const Index = () => {
             </div>
             <div className="space-y-4">
               <ElementTutor />
+              <TutorialCanvas showLattice={showLattice} latticeElements={latticeElements} />
               <InteractionInspector />
             </div>
           </div>
 
-          <CombineLab onSendToMixtureLab={handleSendToMixtureLab} />
+          <CombineLab onSendToMixtureLab={handleSendToMixtureLab} onPredictionChange={setCombinePrediction} />
 
           <div id="mixture-lab" className="mt-4">
             <MixtureLab prefillReactionId={prefillReactionId} />
