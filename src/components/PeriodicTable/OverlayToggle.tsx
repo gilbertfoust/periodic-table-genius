@@ -1,4 +1,4 @@
-import { useSelection, type OverlayMode } from '@/state/useSelectionStore';
+import { useSelection, type OverlayMode } from '@/state/selectionStore';
 
 const OVERLAYS: { mode: OverlayMode; label: string }[] = [
   { mode: 'category', label: 'Category' },

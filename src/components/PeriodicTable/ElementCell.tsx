@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import type { Element } from '@/data/elements';
-import type { OverlayMode } from '@/state/useSelectionStore';
+import type { OverlayMode } from '@/state/selectionStore';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { normalize, hslFromT } from '@/utils/elementHelpers';
 

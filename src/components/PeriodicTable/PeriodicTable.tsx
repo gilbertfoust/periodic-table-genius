@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { ELEMENTS } from '@/data/elements';
-import { useSelection } from '@/state/useSelectionStore';
+import { useSelection } from '@/state/selectionStore';
 import { getEnRange, findElement, isElementMatch } from '@/utils/elementHelpers';
 import { ElementCell } from './ElementCell';
 import { OverlayToggle } from './OverlayToggle';

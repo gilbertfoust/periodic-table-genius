@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useSelection } from '@/state/useSelectionStore';
+import { useSelection } from '@/state/selectionStore';
 import { byZ } from '@/data/elements';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { safeGroupLabel, valenceElectrons, typicalIon, positionStory, generateQuiz, TREND_CARDS, type QuizQuestion } from '@/data/tutorContent';
