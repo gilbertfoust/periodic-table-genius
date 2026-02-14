@@ -1,179 +1,104 @@
 
 
-# Chemistry Learning Lab — Architecture & Implementation Plan
+# Step 4: 3D Tutorial Module (Revised)
+
+## Revisions Applied
+
+Two changes from the approved plan:
+
+1. **BondFormationScene receives `PairAnalysis` via props** -- it does NOT call `analyzePair` or recompute EN thresholds. The parent (`TutorialCanvas`) runs the analysis and passes the result down. When `bondConfidence === 'uncertain'`, the scene shows a caution caption and avoids implying a single outcome (e.g., shows both ionic and covalent possibilities side-by-side with a "?" overlay).
+
+2. **LatticeScene trigger is deterministic** -- it activates only when:
+   - `prediction.reactionType === 'Ionic compound formation'` AND the matched curated reaction's `visuals.kind === 'precip'`, OR
+   - The CombineLab's `matchedReactionId` resolves to a `REACTIONS` entry whose `visuals.kind === 'precip'`
+   
+   No string `.includes()` matching. A boolean `showLattice` prop is computed in `Index.tsx` using strict equality checks.
 
 ---
 
-## Step 1: Architecture Map, State Model & Preservation Checklist
+## Dependencies
 
-This step is **documentation only** — no UI code yet. It establishes the blueprint for everything that follows.
+Install: `three@^0.160.0`, `@react-three/fiber@^8.18.0`, `@react-three/drei@^9.122.0`
 
-### 1A. Module Boundary Map
+## New Files (5)
 
-```
-src/
-├── data/
-│   ├── elements.ts          # 118 element objects (Z, symbol, name, group, period, category, electronegativity, valence, typicalIon)
-│   ├── reactions.ts          # 5 curated reaction configs (coefficients, products, visuals, notes)
-│   ├── categoryColors.ts     # Category → color mapping
-│   └── tutorContent.ts       # Tutor narrative generation logic (group meaning, trend explanations)
-│
-├── state/
-│   ├── useSelectionStore.ts  # Zustand or context: selectedElements[] (multi-select, 1–6), activeOverlay, searchQuery
-│   ├── useLabStore.ts        # Mixture Lab state: selectedReaction, inputs, results, visual outcome
-│   └── useProgressStore.ts   # LocalStorage-backed: studied elements, quiz scores, lab completions (backend-ready)
-│
-├── utils/
-│   ├── stoichiometry.ts      # Moles calc, limiting reactant, product prediction
-│   ├── interactionPredictor.ts  # NEW: bond type likelihood, EN delta, ion tendency, confidence labels
-│   └── elementHelpers.ts     # Search/filter, valence rules, trend lookups
-│
-├── components/
-│   ├── Header/               # Title + search bar
-│   ├── PeriodicTable/        # Grid, ElementCell, OverlayToggle, Legend, f-block rows
-│   ├── SelectionTray/        # NEW: multi-select chip tray (2–6 elements), clear/reorder
-│   ├── ElementTutor/         # Detail panel: Basics tab, Tutor tab, Practice tab
-│   ├── InteractionInspector/  # NEW: bond analysis, EN delta, ion predictions, confidence flags
-│   ├── CombineLab/           # NEW: drag-drop slots, predicted outcomes, "Send to Mixture Lab"
-│   ├── MixtureLab/           # Reaction picker, inputs, stoichiometry results, visual outcome
-│   └── TutorialCanvas/       # NEW: Three.js scenes (atom structure, bond formation, lattice)
-│
-├── scenes/                   # NEW: modular 3D scene files
-│   ├── AtomStructureScene.tsx
-│   ├── BondFormationScene.tsx
-│   └── LatticeScene.tsx
-│
-└── pages/
-    └── Index.tsx             # Single-page layout composing all modules
-```
+### 1. `src/components/TutorialCanvas/WebGLErrorBoundary.tsx`
+- React class component error boundary
+- Catches WebGL/Three.js errors
+- Renders fallback card: "3D view is not available. The tutorial content is still accessible in the Element Tutor panel above."
 
-### 1B. State Model
+### 2. `src/components/TutorialCanvas/TutorialCanvas.tsx`
+- Wraps everything in a shadcn `Collapsible` with a toggle button labeled "3D View"
+- Fixed-height container (280px)
+- Contains `<Canvas>` from fiber with `dpr={[1, 1.5]}`, `frameloop="demand"` when collapsed
+- `Suspense` fallback with loading text
+- `WebGLErrorBoundary` wrapping the Canvas
+- Props: `showLattice: boolean`, `latticeElements: Element[]` (the two ions for the lattice)
+- Scene switching logic:
+  - `showLattice === true` --> `LatticeScene` (with `latticeElements`)
+  - `selectedElements.length === 0` --> placeholder text
+  - `selectedElements.length === 1` --> `AtomStructureScene`
+  - `selectedElements.length >= 2` --> `BondFormationScene`
+- For BondFormationScene: calls `analyzePair(elA, elB)` here in the parent and passes the resulting `PairAnalysis` as a prop
+- Caption `<p>` rendered below the canvas (plain HTML, not inside Three.js), populated by each scene's caption logic
 
-| Store | Shape | Persistence |
-|-------|-------|-------------|
-| **Selection** | `{ selectedElements: number[], activeOverlay: 'category' \| 'electronegativity' \| 'atomicNumber' \| 'group', searchQuery: string }` | Session only |
-| **Lab** | `{ reactionId: string, inputA: {molarity, volume}, inputB: {molarity, volume}, results: StepResult[], visualOutcome: VisualConfig }` | Session only |
-| **Progress** | `{ studiedElements: Set<number>, quizScores: Record<number, boolean[]>, labCompletions: string[] }` | LocalStorage (swap to Supabase later) |
+### 3. `src/scenes/AtomStructureScene.tsx`
+- Reads element from props (first selected element passed by TutorialCanvas)
+- Nucleus as central `<Sphere>` with proton count label via drei `<Html>`
+- Concentric `<Torus>` rings for shells (count = element's period)
+- Small spheres orbiting each ring as electrons; valence shell electrons colored emerald, inner shells blue
+- Simplified 2-8-8-18 shell filling model
+- `useFrame` for orbit animation
+- Exports `getAtomCaption(element)` returning: "Atom model of {Name} (Z={Z}) showing {N} electron shells. The {V} valence electrons (green) determine bonding behavior."
 
-### 1C. Event Flow
+### 4. `src/scenes/BondFormationScene.tsx`
+- Props: `analysis: PairAnalysis` (the full pair analysis result -- bondType, bondConfidence, enDelta, uncertaintyFlags, ionA, ionB)
+- **Does NOT compute EN delta or bond type** -- reads entirely from the `analysis` prop
+- Visualization branches on `analysis.bondType`:
+  - `'Ionic'`: Animates electron sphere detaching from low-EN atom, transferring to high-EN atom; atoms resize to show ion formation
+  - `'Nonpolar covalent'` or `'Polar covalent'`: Two atoms approach, overlapping translucent electron-sharing clouds merge
+  - `'Metallic / alloy'`: Two metallic spheres with shared electron sea (translucent cloud around both)
+  - `'No typical bond'`: Static display with label
+- **Uncertain handling**: When `analysis.bondConfidence === 'uncertain'`, the scene shows both possible outcomes faded/ghosted with a "?" label in the center, and the caption includes a caution note
+- `useFrame` + `useRef` for smooth lerp animations
+- Exports `getBondCaption(analysis)`:
+  - Normal: "Bond formation between {A} and {B}: {bondType} ({enDeltaLabel}). {interactionType}."
+  - Uncertain: "Caution: The interaction between {A} and {B} is uncertain ({enDeltaLabel}). Multiple outcomes are possible depending on conditions. {uncertaintyFlags joined}"
 
-1. **Search** → filters periodic table → dims non-matches, auto-highlights matches
-2. **Click element** → toggles element in `selectedElements[]` (shift-click for multi-select, regular click for single)
-3. **Selection changes** → Element Tutor updates to show first selected → Interaction Inspector updates if 2+ selected → 3D canvas switches scene
-4. **Combine Lab** → user drags from tray into slots → `interactionPredictor` runs → shows predicted outcomes → optional "Send to Mixture Lab" prefills reaction
-5. **Mixture Lab** → select reaction → fill inputs → run → stoichiometry engine → step-by-step results + animated visual
+### 5. `src/scenes/LatticeScene.tsx`
+- Props: `elements: Element[]` (the two ions)
+- 3x3x3 alternating grid of cation/anion spheres, colored by category
+- Animated build: spheres appear one-by-one with stagger delay via `useFrame` + time tracking
+- drei `<OrbitControls>` with `enableDamping` for rotation/zoom
+- Exports `getLatticeCaption(elements)`: "Crystal lattice of {A}-{B} -- ions arrange in a repeating 3D pattern. This structure forms when oppositely charged ions are attracted to each other."
 
-### 1D. Extension Points
+## Modified Files (2)
 
-- **New overlays**: Add to overlay enum + provide a `getOverlayValue(element, overlay)` function
-- **New reactions**: Add to `reactions.ts` array — lab auto-picks them up
-- **New 3D scenes**: Drop a new scene component in `scenes/`, register in scene switcher
-- **Backend swap**: Replace LocalStorage calls in `useProgressStore` with Supabase client — interface stays identical
-- **New interaction rules**: Add prediction functions to `interactionPredictor.ts`
+### `src/components/CombineLab/CombineLab.tsx`
+- Add optional prop: `onPredictionChange?: (prediction: CombinePrediction | null) => void`
+- Add a `useEffect` that calls `onPredictionChange` whenever `prediction` changes
+- No other changes
 
-### 1E. Preservation Checklist
+### `src/pages/Index.tsx`
+- Import `TutorialCanvas`, `CombinePrediction`, and `REACTIONS`
+- Add state: `const [combinePrediction, setCombinePrediction] = useState<CombinePrediction | null>(null)`
+- Compute `showLattice` deterministically:
+  ```
+  const showLattice = combinePrediction !== null
+    && combinePrediction.matchedReactionId !== null
+    && REACTIONS.find(r => r.id === combinePrediction.matchedReactionId)?.visuals.kind === 'precip';
+  ```
+- Compute `latticeElements` from `combinePrediction.elements` when `showLattice` is true
+- Pass `onPredictionChange={setCombinePrediction}` to `CombineLab`
+- Place `<TutorialCanvas showLattice={showLattice} latticeElements={latticeElements} />` in the right column between `ElementTutor` and `InteractionInspector`
 
-| Existing Behavior | Verified By |
-|---|---|
-| All 118 elements render in correct grid positions (main grid + lanthanide/actinide rows) | Visual comparison |
-| 4 overlay modes toggle correctly with matching legend | Toggle each, compare colors |
-| Search filters by symbol, name, atomic number, and category substring | Test "H", "Oxygen", "8", "halogen", "lan" |
-| Non-matching elements dim; matches highlight | Visual check during search |
-| Element Tutor shows: atomic number, symbol, category, period, group, valence electrons, typical ion, electronegativity | Compare all 8 fields for O, Na, Fe |
-| Tutor tab generates narrative about group meaning, category, predictions, trends | Read tutor text for elements in different groups |
-| Practice tab shows multiple-choice questions with check + feedback | Answer correctly and incorrectly |
-| Mixture Lab: 5 reactions selectable via dropdown | Cycle through all 5 |
-| Stoichiometry: moles calculation, limiting reactant, product amounts all correct | Run with example values for each reaction |
-| Visual outcomes: gas bubbles, precipitate bar, heat glow, color changes animate | Run each reaction type |
-| "Example values" button prefills inputs; "Reset" clears them | Click both buttons |
+## Verification Plan
 
----
-
-## Step 2: React Scaffold + Port Existing Features
-
-Port all existing prototype behavior into the React component architecture defined above, with a fresh dark-themed design using shadcn/ui.
-
-### Periodic Table Explorer
-- 18-column CSS grid with proper element positioning
-- ElementCell component with hover effects, selection highlight, dimming on search
-- 4 overlay toggle pills (Category, Electronegativity, Atomic #, Group)
-- Dynamic color legend per overlay
-- Lanthanide/Actinide rows separated below main grid
-- Search input in header that filters in real-time
-
-### Element Tutor Panel
-- Shows details for the currently selected element
-- Three tabs using shadcn Tabs component:
-  - **Basics**: Card grid with 8 key properties
-  - **Tutor**: Generated narrative paragraphs explaining trends
-  - **Practice**: Multiple-choice quiz with instant feedback and visual correct/incorrect states
-
-### Mixture Lab
-- Reaction selector dropdown (5 curated reactions)
-- Two reactant input rows with molarity/volume fields
-- Action buttons: Run, Example Values, Reset
-- Results area: balanced equation, step-by-step stoichiometry walkthrough
-- Animated visual outcome panel (gas bubbles, precipitate, heat, color shift via CSS animations)
-
-### Multi-Select Foundation
-- Shift-click on periodic table adds element to selection tray (up to 6)
-- Regular click replaces selection with single element
-- Selection tray shows as a row of element chips below the periodic table
-
----
-
-## Step 3: Interaction Inspector + Combine Lab
-
-### Interaction Inspector Panel
-- Activates automatically when 2+ elements are selected in the tray
-- For each pair in the selection, displays:
-  - **Electronegativity delta** and what it suggests (ionic vs covalent tendency)
-  - **Bond type likelihood** labeled as *likely*, *plausible*, or *uncertain*
-  - **Typical ion tendencies** for each element (cation/anion predictions)
-  - **Expected interaction type** (ionic bond, covalent bond, metallic bond, no typical reaction)
-  - **Uncertainty flags** where predictions are ambiguous (e.g., metalloids, transition metals with multiple oxidation states)
-
-### Combine Lab
-- Drag-and-drop interface: pull element chips from the selection tray into 2–4 reactant slots
-- Once slots are filled, shows:
-  - Predicted product(s) with explanation
-  - Confidence label (*likely / plausible / uncertain*)
-  - Reaction type classification
-- **"Send to Mixture Lab"** button: if the combination matches a curated reaction, prefills the Mixture Lab with that reaction and suggested input values
-- If no curated reaction matches, shows a message explaining the prediction is theoretical only
-
----
-
-## Step 4: 3D Tutorial Module
-
-### Architecture
-- Uses `@react-three/fiber@^8.18` and `@react-three/drei@^9.122.0` with `three@>=0.133`
-- Single `TutorialCanvas` wrapper component with a scene switcher
-- Each scene is a separate file in `src/scenes/`
-- Scene selection driven by current element selection and user toggle
-
-### Scene 1: Atom Structure
-- Displays electron shells as concentric rings/spheres
-- Valence electrons highlighted in a distinct color
-- Nucleus represented as a central sphere
-- Adapts to whichever element is selected (correct shell count and electron distribution)
-- Orbit animation with adjustable speed
-
-### Scene 2: Bond Formation
-- Triggered when 2 elements are selected
-- Animates ionic bond (electron transfer) or covalent bond (electron sharing) based on EN delta
-- Shows before/after states with labels
-- Color-coded to match element categories
-
-### Scene 3: Lattice / Precipitate Formation
-- Triggered from Combine Lab when a precipitation reaction is predicted
-- Simple 3D crystal lattice building animation
-- Ions snap into position in a repeating unit cell pattern
-- Can be rotated/zoomed by the user
-
-### Integration
-- Canvas appears as a collapsible panel alongside the Element Tutor
-- Toggle button to show/hide 3D view
-- Scene auto-switches based on context (1 element → atom structure, 2 elements → bond formation, precipitate reaction → lattice)
-- Fallback to a placeholder when Three.js is loading
+1. Click Oxygen (Z=8) -- AtomStructureScene: 2 shells, 6 green valence electrons, caption mentions "6 valence electrons"
+2. Shift-click Na + Cl -- BondFormationScene receives `PairAnalysis` with `bondType: 'Ionic'`, shows electron transfer animation, caption: "Ionic bond (delta-EN = 2.23)"
+3. Shift-click C + O -- BondFormationScene receives `bondType: 'Polar covalent'`, shows sharing animation, caption: "Covalent bond (delta-EN = 0.89)"
+4. Shift-click Fe + Cu (both transition metals) -- `bondConfidence: 'plausible'` or `'uncertain'`, scene shows caution state
+5. In CombineLab, assign Ag + Cl -- `matchedReactionId: 'precip_agcl'` -- `REACTIONS.find(...).visuals.kind === 'precip'` is true -- LatticeScene triggers with deterministic check
+6. In CombineLab, assign Na + Cl with `matchedReactionId: 'neutralization'` -- `visuals.kind === 'heat'` -- LatticeScene does NOT trigger
+7. Collapse/expand toggle works, no console errors on unmount
 
