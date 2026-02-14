@@ -22,6 +22,13 @@ const Index = () => {
     }, 100);
   }, []);
 
+  const handleDemoScenario = useCallback((scenario: 'ionic' | 'covalent' | 'precip') => {
+    if (scenario === 'precip') {
+      // Prefill Mixture Lab with precip_agcl reaction
+      handleSendToMixtureLab('precip_agcl');
+    }
+  }, [handleSendToMixtureLab]);
+
   const showLattice = useMemo(() =>
     combinePrediction !== null
     && combinePrediction.matchedReactionId !== null
@@ -43,7 +50,7 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-4 items-start">
             <div>
               <PeriodicTable />
-              <SelectionTray />
+              <SelectionTray onDemoScenario={handleDemoScenario} />
             </div>
             <div className="space-y-4">
               <ElementTutor />
