@@ -8,7 +8,7 @@ import { Legend } from './Legend';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 export function PeriodicTable() {
-  const { selectedElements, activeOverlay, searchQuery, selectElement } = useSelection();
+  const { selectedElements, activeOverlay, searchQuery, selectElement, multiSelectMode } = useSelection();
   const { enMin, enMax } = useMemo(() => getEnRange(), []);
 
   const categoryFocus = useMemo(() => {
@@ -36,8 +36,8 @@ export function PeriodicTable() {
   );
 
   const handleClick = useCallback((Z: number, e: React.MouseEvent) => {
-    selectElement(Z, e.shiftKey);
-  }, [selectElement]);
+    selectElement(Z, e.shiftKey || multiSelectMode);
+  }, [selectElement, multiSelectMode]);
 
   const isDimmed = useCallback((el: typeof ELEMENTS[0]) => {
     return !isElementMatch(el, searchQuery, categoryFocus);
@@ -121,7 +121,7 @@ export function PeriodicTable() {
         </div>
 
         <p className="text-xs text-muted-foreground mt-1">
-          Tip: on small screens, scroll the table left and right. Click any element to inspect it. Shift-click to multi-select (up to 6).
+          Tip: on small screens, scroll the table left and right. Click any element to inspect it. Use the "Add mode" toggle or Shift-click to multi-select (up to 6).
         </p>
       </CardContent>
     </Card>

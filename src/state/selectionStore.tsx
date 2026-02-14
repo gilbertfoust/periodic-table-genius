@@ -6,11 +6,14 @@ interface SelectionState {
   selectedElements: number[];
   activeOverlay: OverlayMode;
   searchQuery: string;
+  multiSelectMode: boolean;
   selectElement: (Z: number, multi?: boolean) => void;
   removeElement: (Z: number) => void;
   clearSelection: () => void;
   setOverlay: (mode: OverlayMode) => void;
   setSearchQuery: (q: string) => void;
+  setMultiSelectMode: (on: boolean) => void;
+  setSelectedElements: (zs: number[]) => void;
 }
 
 const SelectionContext = createContext<SelectionState | null>(null);
@@ -19,6 +22,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
   const [selectedElements, setSelectedElements] = useState<number[]>([8]);
   const [activeOverlay, setActiveOverlay] = useState<OverlayMode>('category');
   const [searchQuery, setSearchQuery] = useState('');
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
 
   const selectElement = useCallback((Z: number, multi = false) => {
     setSelectedElements(prev => {
@@ -42,11 +46,14 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
       selectedElements,
       activeOverlay,
       searchQuery,
+      multiSelectMode,
       selectElement,
       removeElement,
       clearSelection,
       setOverlay: setActiveOverlay,
       setSearchQuery,
+      setMultiSelectMode,
+      setSelectedElements,
     }}>
       {children}
     </SelectionContext.Provider>
