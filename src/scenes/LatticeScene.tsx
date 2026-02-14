@@ -1,10 +1,15 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import type { Element } from '@/data/elements';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
+import type { SceneControls } from '@/types/learningLayers';
 
-interface Props { elements: Element[] }
+interface Props {
+  elements: Element[];
+  controls: SceneControls;
+  onResetRef?: React.MutableRefObject<(() => void) | null>;
+}
 
 export function getLatticeCaption(elements: Element[]): string {
   const names = elements.map(e => e.sym).join('-');
@@ -13,9 +18,10 @@ export function getLatticeCaption(elements: Element[]): string {
 
 interface Node { pos: [number, number, number]; color: string; delay: number }
 
-export function LatticeScene({ elements }: Props) {
+export function LatticeScene({ elements, controls, onResetRef }: Props) {
   const startTime = useRef<number | null>(null);
   const visibleRef = useRef(0);
+  const showUnitCell = !!controls.overlays['unitCell'];
 
   const nodes = useMemo<Node[]>(() => {
     const list: Node[] = [];
@@ -39,9 +45,18 @@ export function LatticeScene({ elements }: Props) {
     return list;
   }, [elements]);
 
+  // Reset handler
+  const reset = useCallback(() => {
+    startTime.current = null;
+    visibleRef.current = 0;
+  }, []);
+
+  if (onResetRef) onResetRef.current = reset;
+
   useFrame(({ clock }) => {
+    if (controls.paused) return;
     if (startTime.current === null) startTime.current = clock.elapsedTime;
-    const elapsed = clock.elapsedTime - startTime.current;
+    const elapsed = (clock.elapsedTime - startTime.current) * controls.speed;
     visibleRef.current = elapsed;
   });
 
@@ -51,6 +66,13 @@ export function LatticeScene({ elements }: Props) {
       {nodes.map((n, i) => (
         <LatticeNode key={i} node={n} timeRef={visibleRef} />
       ))}
+      {/* Unit cell wireframe overlay */}
+      {showUnitCell && (
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[0.8, 0.8, 0.8]} />
+          <meshStandardMaterial color="#fbbf24" wireframe transparent opacity={0.4} />
+        </mesh>
+      )}
     </>
   );
 }

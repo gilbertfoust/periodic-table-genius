@@ -1,25 +1,44 @@
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, useRef, useCallback, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useSelection } from '@/state/selectionStore';
 import { byZ, type Element } from '@/data/elements';
-import { analyzePair } from '@/utils/interactionPredictor';
+import { analyzePair, type PairAnalysis } from '@/utils/interactionPredictor';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Box } from 'lucide-react';
 import { WebGLErrorBoundary } from './WebGLErrorBoundary';
-import { AtomStructureScene, getAtomCaption } from '@/scenes/AtomStructureScene';
-import { BondFormationScene, getBondCaption } from '@/scenes/BondFormationScene';
+import { AtomStructureScene, getAtomCaption, getAtomAccountingData } from '@/scenes/AtomStructureScene';
+import { BondFormationScene, getBondCaption, getBondAccountingData } from '@/scenes/BondFormationScene';
 import { LatticeScene, getLatticeCaption } from '@/scenes/LatticeScene';
+import { SceneControlsUI } from './SceneControls';
+import { LevelNotice } from './LevelNotice';
+import { atomNotice, bondNotice, latticeNotice, type SceneControls, DEFAULT_CONTROLS } from '@/types/learningLayers';
 
 interface Props {
   showLattice: boolean;
   latticeElements: Element[];
 }
 
+type OverlayDef = { key: string; label: string; levelMin: 'beginner' | 'intermediate' | 'advanced' };
+
+const ATOM_OVERLAYS: OverlayDef[] = [
+  { key: 'valenceHighlight', label: 'Valence highlight', levelMin: 'beginner' },
+  { key: 'octetRing', label: 'Octet target ring', levelMin: 'intermediate' },
+];
+const BOND_OVERLAYS: OverlayDef[] = [
+  { key: 'charges', label: 'Charge labels', levelMin: 'beginner' },
+  { key: 'dipole', label: 'Dipole arrow', levelMin: 'intermediate' },
+];
+const LATTICE_OVERLAYS: OverlayDef[] = [
+  { key: 'unitCell', label: 'Unit cell', levelMin: 'intermediate' },
+];
+
 export function TutorialCanvas({ showLattice, latticeElements }: Props) {
   const [open, setOpen] = useState(true);
+  const [controls, setControls] = useState<SceneControls>({ ...DEFAULT_CONTROLS, overlays: { valenceHighlight: true, charges: true } });
   const { selectedElements } = useSelection();
+  const latticeResetRef = useRef<(() => void) | null>(null);
 
   const elements = useMemo(
     () => selectedElements.map(Z => byZ(Z)).filter(Boolean) as Element[],
@@ -31,20 +50,52 @@ export function TutorialCanvas({ showLattice, latticeElements }: Props) {
     [elements]
   );
 
-  // Determine scene + caption
+  // Determine scene type
+  type SceneType = 'lattice' | 'bond' | 'atom' | 'none';
+  let sceneType: SceneType = 'none';
   let caption = 'Select an element on the periodic table to see its atomic structure.';
   let sceneKey = 'placeholder';
 
   if (showLattice && latticeElements.length >= 2) {
+    sceneType = 'lattice';
     caption = getLatticeCaption(latticeElements);
     sceneKey = `lattice-${latticeElements.map(e => e.Z).join('-')}`;
   } else if (elements.length >= 2 && pairAnalysis) {
+    sceneType = 'bond';
     caption = getBondCaption(pairAnalysis);
     sceneKey = `bond-${elements[0].Z}-${elements[1].Z}`;
   } else if (elements.length === 1) {
+    sceneType = 'atom';
     caption = getAtomCaption(elements[0]);
     sceneKey = `atom-${elements[0].Z}`;
   }
+
+  const overlayDefs = sceneType === 'atom' ? ATOM_OVERLAYS : sceneType === 'bond' ? BOND_OVERLAYS : sceneType === 'lattice' ? LATTICE_OVERLAYS : [];
+
+  const showAssumptions = pairAnalysis ? (pairAnalysis.bondConfidence === 'uncertain' || pairAnalysis.uncertaintyFlags.length > 0) : false;
+
+  const handleReset = useCallback(() => {
+    latticeResetRef.current?.();
+  }, []);
+
+  // Level notice text
+  const levelText = useMemo(() => {
+    if (sceneType === 'atom' && elements[0]) {
+      const { shells, valence } = getAtomAccountingData(elements[0]);
+      return atomNotice(elements[0].sym, shells, valence);
+    }
+    if (sceneType === 'bond' && pairAnalysis) {
+      return bondNotice(pairAnalysis);
+    }
+    if (sceneType === 'lattice' && latticeElements.length >= 2) {
+      return latticeNotice(latticeElements.map(e => e.sym));
+    }
+    return null;
+  }, [sceneType, elements, pairAnalysis, latticeElements]);
+
+  // Electron accounting for atom/bond
+  const atomAccounting = sceneType === 'atom' && elements[0] ? getAtomAccountingData(elements[0]) : null;
+  const bondAccounting = sceneType === 'bond' && pairAnalysis ? getBondAccountingData(pairAnalysis) : null;
 
   return (
     <Card className="bg-card/80 backdrop-blur border-border">
@@ -62,32 +113,70 @@ export function TutorialCanvas({ showLattice, latticeElements }: Props) {
         </CardHeader>
 
         <CollapsibleContent>
-          <div className="px-4 pb-3">
+          <div className="px-4 pb-3 space-y-2">
+            {/* Controls */}
+            {sceneType !== 'none' && (
+              <SceneControlsUI
+                controls={controls}
+                onChange={setControls}
+                overlayDefs={overlayDefs}
+                showReset={sceneType === 'lattice'}
+                onReset={handleReset}
+              />
+            )}
+
             <WebGLErrorBoundary>
               <div className="h-[280px] w-full rounded-lg overflow-hidden bg-background/40 border border-border/30">
                 <Canvas
                   key={sceneKey}
                   dpr={[1, 1.5]}
                   camera={{ position: [0, 0, 5], fov: 45 }}
-                  frameloop={open ? 'always' : 'demand'}
+                  frameloop={open && !controls.paused ? 'always' : 'demand'}
                 >
                   <ambientLight intensity={0.6} />
                   <directionalLight position={[3, 3, 5]} intensity={0.8} />
                   <Suspense fallback={null}>
-                    {showLattice && latticeElements.length >= 2 ? (
-                      <LatticeScene elements={latticeElements} />
-                    ) : elements.length >= 2 && pairAnalysis ? (
-                      <BondFormationScene analysis={pairAnalysis} />
-                    ) : elements.length === 1 ? (
-                      <AtomStructureScene element={elements[0]} />
+                    {sceneType === 'lattice' && latticeElements.length >= 2 ? (
+                      <LatticeScene elements={latticeElements} controls={controls} onResetRef={latticeResetRef} />
+                    ) : sceneType === 'bond' && pairAnalysis ? (
+                      <BondFormationScene analysis={pairAnalysis} controls={controls} />
+                    ) : sceneType === 'atom' && elements.length >= 1 ? (
+                      <AtomStructureScene element={elements[0]} controls={controls} />
                     ) : null}
                   </Suspense>
                 </Canvas>
               </div>
             </WebGLErrorBoundary>
-            <p className="text-xs text-muted-foreground italic mt-1.5">
-              {caption}
-            </p>
+
+            {/* Caption */}
+            <p className="text-xs text-muted-foreground italic">{caption}</p>
+
+            {/* Electron Accounting */}
+            {atomAccounting && (
+              <div className="text-[11px] text-foreground/80 bg-secondary/20 rounded px-2 py-1">
+                <span className="font-medium">Shells:</span> {atomAccounting.shells.length} · <span className="font-medium">Valence:</span> {atomAccounting.valence}
+                {controls.level !== 'beginner' && (
+                  <span className="text-muted-foreground ml-2">Distribution: {atomAccounting.shellLabel}</span>
+                )}
+              </div>
+            )}
+            {bondAccounting && (
+              <div className="text-[11px] text-foreground/80 bg-secondary/20 rounded px-2 py-1">
+                <span className="font-medium">{bondAccounting.description}</span>
+                {bondAccounting.showCounts && controls.level !== 'beginner' ? (
+                  <span className="text-muted-foreground ml-2">
+                    {bondAccounting.ionA.element.sym}: {bondAccounting.ionA.typicalCharge ?? '?'} · {bondAccounting.ionB.element.sym}: {bondAccounting.ionB.typicalCharge ?? '?'}
+                  </span>
+                ) : !bondAccounting.showCounts ? (
+                  <span className="text-amber-400/80 ml-2 text-[10px]">Variable — depends on conditions</span>
+                ) : null}
+              </div>
+            )}
+
+            {/* Level notice */}
+            {levelText && (
+              <LevelNotice text={levelText} level={controls.level} showAssumptions={showAssumptions} />
+            )}
           </div>
         </CollapsibleContent>
       </Collapsible>
