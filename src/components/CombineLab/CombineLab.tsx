@@ -6,6 +6,7 @@ import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { predictCombination, type Confidence, type CombinePrediction, type PairAnalysis } from '@/utils/interactionPredictor';
 import { formatFormula, synthesize, type SlotEntry } from '@/utils/synthesisEngine';
 import { lookupCompound } from '@/data/knownCompounds';
+import { SynthesisVisualOutcome } from '@/components/MixtureLab/SynthesisVisualOutcome';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -266,6 +267,10 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
                     Known Compound
                   </Badge>
                 </div>
+
+                {/* Mini visual outcome */}
+                <SynthesisVisualOutcome visual={knownCompound.visual} mini />
+
                 <p className="text-xs text-foreground/85 leading-relaxed">{knownCompound.description}</p>
                 <div className="flex gap-1.5 flex-wrap">
                   <Badge variant="secondary" className="text-[10px]">{knownCompound.classification}</Badge>

@@ -1,6 +1,6 @@
 import { byZ, type Element } from '@/data/elements';
 import type { PairAnalysis, Confidence } from '@/utils/interactionPredictor';
-import { lookupCompound, type KnownCompound, type RelatedCompound } from '@/data/knownCompounds';
+import { lookupCompound, type KnownCompound, type RelatedCompound, type CompoundVisual } from '@/data/knownCompounds';
 
 export interface SlotEntry {
   Z: number;
@@ -22,6 +22,7 @@ export interface SynthesisResult {
   compoundDescription: string | null;
   compoundDidYouKnow: string | null;
   relatedCompounds: RelatedCompound[] | null;
+  compoundVisual: CompoundVisual | null;
 }
 
 /** Format a formula from slots, e.g. [{Z:1,count:2},{Z:8,count:1}] => "H₂O" */
@@ -91,11 +92,12 @@ export function synthesize(slots: SlotEntry[], primaryPair: PairAnalysis | null)
       compoundDescription: known.description,
       compoundDidYouKnow: known.didYouKnow,
       relatedCompounds: known.related.length > 0 ? known.related : null,
+      compoundVisual: known.visual,
     };
   }
 
   if (!primaryPair || slots.length < 2) {
-    return { formula, classification: 'uncertain', confidence: 'uncertain', ionFormula: null, chargeA: null, chargeB: null, flags: ['Insufficient elements for analysis.'], assumptionsNote: null, compoundName: null, compoundDescription: null, compoundDidYouKnow: null, relatedCompounds: null };
+    return { formula, classification: 'uncertain', confidence: 'uncertain', ionFormula: null, chargeA: null, chargeB: null, flags: ['Insufficient elements for analysis.'], assumptionsNote: null, compoundName: null, compoundDescription: null, compoundDidYouKnow: null, relatedCompounds: null, compoundVisual: null };
   }
 
   const { bondType, bondConfidence, uncertaintyFlags, ionA, ionB } = primaryPair;
@@ -141,5 +143,6 @@ export function synthesize(slots: SlotEntry[], primaryPair: PairAnalysis | null)
     compoundDescription: null,
     compoundDidYouKnow: null,
     relatedCompounds: null,
+    compoundVisual: null,
   };
 }

@@ -6,6 +6,7 @@ import type { PairAnalysis } from '@/utils/interactionPredictor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus, Minus, Eye } from 'lucide-react';
+import { SynthesisVisualOutcome } from './SynthesisVisualOutcome';
 
 const CLASS_LABELS: Record<string, string> = {
   ionic: 'Ionic solid',
@@ -112,33 +113,41 @@ export function SynthesisPanel({ initialSlots, primaryPair, onViewIn3D, onSynthe
 
       {/* Result */}
       {result && (
-        <div className="border border-border/40 rounded-xl bg-secondary/10 p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <Badge variant="outline" className="text-xs">{CLASS_LABELS[result.classification]}</Badge>
-            <Badge variant="outline" className={`text-[11px] ${CONFIDENCE_COLORS[result.confidence]}`}>
-              {result.confidence}
-            </Badge>
+        <div className="space-y-3">
+          {/* Visual Outcome */}
+          <SynthesisVisualOutcome
+            visual={result.compoundVisual}
+            classification={result.classification}
+          />
+
+          <div className="border border-border/40 rounded-xl bg-secondary/10 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Badge variant="outline" className="text-xs">{CLASS_LABELS[result.classification]}</Badge>
+              <Badge variant="outline" className={`text-[11px] ${CONFIDENCE_COLORS[result.confidence]}`}>
+                {result.confidence}
+              </Badge>
+            </div>
+
+            <div className="text-sm font-bold text-foreground">{result.formula}</div>
+
+            {result.ionFormula && (
+              <div className="text-xs text-foreground/80">
+                <span className="font-medium">Proposed ionic formula:</span> {result.ionFormula}
+              </div>
+            )}
+
+            {result.flags.length > 0 && (
+              <div className="space-y-1">
+                {result.flags.map((f, i) => (
+                  <div key={i} className="text-[10px] text-amber-400/80">⚠ {f}</div>
+                ))}
+              </div>
+            )}
+
+            {result.assumptionsNote && (
+              <div className="text-[10px] text-amber-400/70 italic">{result.assumptionsNote}</div>
+            )}
           </div>
-
-          <div className="text-sm font-bold text-foreground">{result.formula}</div>
-
-          {result.ionFormula && (
-            <div className="text-xs text-foreground/80">
-              <span className="font-medium">Proposed ionic formula:</span> {result.ionFormula}
-            </div>
-          )}
-
-          {result.flags.length > 0 && (
-            <div className="space-y-1">
-              {result.flags.map((f, i) => (
-                <div key={i} className="text-[10px] text-amber-400/80">⚠ {f}</div>
-              ))}
-            </div>
-          )}
-
-          {result.assumptionsNote && (
-            <div className="text-[10px] text-amber-400/70 italic">{result.assumptionsNote}</div>
-          )}
         </div>
       )}
 
