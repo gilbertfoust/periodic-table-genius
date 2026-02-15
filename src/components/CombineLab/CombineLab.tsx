@@ -280,26 +280,29 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
             <p className="text-[11px] text-foreground/75 leading-relaxed">{prediction.explanation}</p>
 
             {/* Send to Mixture Lab or Synthesis */}
-            {prediction.matchedReactionId && onSendToMixtureLab ? (
-              <Button
-                size="sm"
-                onClick={() => onSendToMixtureLab(prediction.matchedReactionId!)}
-                className="w-full gap-2 text-xs"
-              >
-                <Send className="h-3.5 w-3.5" />
-                Send to Synthesis Mixture Lab
-              </Button>
-            ) : prediction.matchedReactionId === null && onSendToSynthesis ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onSendToSynthesis(slotEntries)}
-                className="w-full gap-2 text-xs"
-              >
-                <Beaker className="h-3.5 w-3.5" />
-                Send to Synthesis
-              </Button>
-            ) : null}
+            <div className="flex flex-col gap-2">
+              {prediction.matchedReactionId && onSendToMixtureLab && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onSendToMixtureLab(prediction.matchedReactionId!)}
+                  className="w-full gap-2 text-xs"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Send to Curated Reaction
+                </Button>
+              )}
+              {onSendToSynthesis && (
+                <Button
+                  size="sm"
+                  onClick={() => onSendToSynthesis(slotEntries)}
+                  className="w-full gap-2 text-xs"
+                >
+                  <Beaker className="h-3.5 w-3.5" />
+                  Send to Synthesis
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
