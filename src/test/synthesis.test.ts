@@ -38,7 +38,7 @@ describe('synthesize – preserves counts and classifies correctly', () => {
     expect(result.confidence).not.toBe('uncertain');
   });
 
-  it('NaCl → ionic', () => {
+  it('NaCl → ionic (known compound)', () => {
     const Na = byZ(11)!;
     const Cl = byZ(17)!;
     const pair = analyzePair(Na, Cl);
@@ -46,26 +46,37 @@ describe('synthesize – preserves counts and classifies correctly', () => {
     const result = synthesize(slots, pair);
     expect(result.formula).toBe('NaCl');
     expect(result.classification).toBe('ionic');
-    expect(result.ionFormula).toBe('NaCl');
+    expect(result.compoundName).toBe('Table Salt');
+    expect(result.confidence).toBe('likely');
   });
 
-  it('MgCl2 → ionic with charge-balanced formula', () => {
+  it('MgCl2 → ionic (known compound)', () => {
     const Mg = byZ(12)!;
     const Cl = byZ(17)!;
     const pair = analyzePair(Mg, Cl);
     const slots: SlotEntry[] = [{ Z: 12, count: 1 }, { Z: 17, count: 2 }];
     const result = synthesize(slots, pair);
     expect(result.classification).toBe('ionic');
-    expect(result.ionFormula).toBe('MgCl₂');
+    expect(result.compoundName).toBe('Magnesium Chloride');
   });
 
-  it('Fe+O → has uncertainty flags', () => {
+  it('FeO → known compound (Iron(II) Oxide)', () => {
     const Fe = byZ(26)!;
     const O = byZ(8)!;
     const pair = analyzePair(Fe, O);
     const slots: SlotEntry[] = [{ Z: 26, count: 1 }, { Z: 8, count: 1 }];
     const result = synthesize(slots, pair);
-    expect(result.flags.length).toBeGreaterThan(0);
+    expect(result.compoundName).toBe('Iron(II) Oxide');
+    expect(result.confidence).toBe('likely');
+  });
+
+  it('Unknown combo → falls through to EN-based logic', () => {
+    const Li = byZ(3)!;
+    const S = byZ(16)!;
+    const pair = analyzePair(Li, S);
+    const slots: SlotEntry[] = [{ Z: 3, count: 1 }, { Z: 16, count: 1 }];
+    const result = synthesize(slots, pair);
+    expect(result.compoundName).toBeNull();
   });
 });
 

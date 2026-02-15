@@ -1,5 +1,6 @@
 import { byZ, type Element } from '@/data/elements';
 import type { PairAnalysis, Confidence } from '@/utils/interactionPredictor';
+import { lookupCompound, type KnownCompound, type RelatedCompound } from '@/data/knownCompounds';
 
 export interface SlotEntry {
   Z: number;
@@ -17,6 +18,10 @@ export interface SynthesisResult {
   chargeB: number | null;
   flags: string[];
   assumptionsNote: string | null;
+  compoundName: string | null;
+  compoundDescription: string | null;
+  compoundDidYouKnow: string | null;
+  relatedCompounds: RelatedCompound[] | null;
 }
 
 /** Format a formula from slots, e.g. [{Z:1,count:2},{Z:8,count:1}] => "H₂O" */
@@ -70,8 +75,27 @@ export function synthesize(slots: SlotEntry[], primaryPair: PairAnalysis | null)
   const flags: string[] = [];
   let assumptionsNote: string | null = null;
 
+  // Try known compound lookup first
+  const known = lookupCompound(slots);
+  if (known) {
+    return {
+      formula: known.formula,
+      classification: known.classification,
+      confidence: 'likely',
+      ionFormula: null,
+      chargeA: null,
+      chargeB: null,
+      flags: [],
+      assumptionsNote: null,
+      compoundName: known.name,
+      compoundDescription: known.description,
+      compoundDidYouKnow: known.didYouKnow,
+      relatedCompounds: known.related.length > 0 ? known.related : null,
+    };
+  }
+
   if (!primaryPair || slots.length < 2) {
-    return { formula, classification: 'uncertain', confidence: 'uncertain', ionFormula: null, chargeA: null, chargeB: null, flags: ['Insufficient elements for analysis.'], assumptionsNote: null };
+    return { formula, classification: 'uncertain', confidence: 'uncertain', ionFormula: null, chargeA: null, chargeB: null, flags: ['Insufficient elements for analysis.'], assumptionsNote: null, compoundName: null, compoundDescription: null, compoundDidYouKnow: null, relatedCompounds: null };
   }
 
   const { bondType, bondConfidence, uncertaintyFlags, ionA, ionB } = primaryPair;
@@ -113,5 +137,9 @@ export function synthesize(slots: SlotEntry[], primaryPair: PairAnalysis | null)
     chargeB: cB,
     flags,
     assumptionsNote,
+    compoundName: null,
+    compoundDescription: null,
+    compoundDidYouKnow: null,
+    relatedCompounds: null,
   };
 }
