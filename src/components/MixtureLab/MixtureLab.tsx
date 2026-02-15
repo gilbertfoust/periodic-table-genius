@@ -16,9 +16,10 @@ interface MixtureLabProps {
   synthesisInput?: SlotEntry[] | null;
   primaryPair?: PairAnalysis | null;
   onViewIn3D?: (zs: number[]) => void;
+  onSynthesisResult?: (result: import('@/utils/synthesisEngine').SynthesisResult | null) => void;
 }
 
-export function MixtureLab({ prefillReactionId, synthesisInput, primaryPair, onViewIn3D }: MixtureLabProps) {
+export function MixtureLab({ prefillReactionId, synthesisInput, primaryPair, onViewIn3D, onSynthesisResult }: MixtureLabProps) {
   const [rxnId, setRxnId] = useState(REACTIONS[0]?.id || '');
   const [a1, setA1] = useState('');
   const [a2, setA2] = useState('');
@@ -190,6 +191,7 @@ export function MixtureLab({ prefillReactionId, synthesisInput, primaryPair, onV
               initialSlots={synthesisInput ?? undefined}
               primaryPair={primaryPair ?? null}
               onViewIn3D={onViewIn3D}
+              onSynthesisResult={onSynthesisResult}
             />
           </TabsContent>
         </Tabs>

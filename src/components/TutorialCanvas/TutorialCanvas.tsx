@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { useSelection } from '@/state/selectionStore';
 import { byZ, type Element } from '@/data/elements';
 import type { PairAnalysis } from '@/utils/interactionPredictor';
+import type { SynthesisResult } from '@/utils/synthesisEngine';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { BondFormationScene, getBondCaption, getBondAccountingData } from '@/sce
 import { LatticeScene, getLatticeCaption } from '@/scenes/LatticeScene';
 import { SceneControlsUI } from './SceneControls';
 import { LevelNotice } from './LevelNotice';
+import { WhyHowTimeline, buildTimelineSteps } from './WhyHowTimeline';
 import { atomNotice, bondNotice, latticeNotice, type SceneControls, DEFAULT_CONTROLS } from '@/types/learningLayers';
 import type { LearningLevel } from '@/types/learningLayers';
 
@@ -20,6 +22,7 @@ interface Props {
   showLattice: boolean;
   latticeElements: Element[];
   primaryPair?: PairAnalysis | null;
+  synthesisResult?: SynthesisResult | null;
   onSceneStateChange?: (state: { level: LearningLevel; isExpanded: boolean; sceneType: string }) => void;
 }
 
@@ -37,7 +40,7 @@ const LATTICE_OVERLAYS: OverlayDef[] = [
   { key: 'unitCell', label: 'Unit cell', levelMin: 'intermediate' },
 ];
 
-export function TutorialCanvas({ showLattice, latticeElements, primaryPair, onSceneStateChange }: Props) {
+export function TutorialCanvas({ showLattice, latticeElements, primaryPair, synthesisResult, onSceneStateChange }: Props) {
   const [open, setOpen] = useState(true);
   const [controls, setControls] = useState<SceneControls>({ ...DEFAULT_CONTROLS, overlays: { valenceHighlight: true, charges: true } });
   const { selectedElements } = useSelection();
@@ -103,6 +106,20 @@ export function TutorialCanvas({ showLattice, latticeElements, primaryPair, onSc
   // Electron accounting for atom/bond
   const atomAccounting = sceneType === 'atom' && elements[0] ? getAtomAccountingData(elements[0]) : null;
   const bondAccounting = sceneType === 'bond' && pairAnalysis ? getBondAccountingData(pairAnalysis) : null;
+
+  // Why/How timeline steps
+  const timelineSteps = useMemo(() => {
+    if (sceneType === 'bond' || sceneType === 'lattice') {
+      return buildTimelineSteps(pairAnalysis, synthesisResult ?? null, controls.level);
+    }
+    return [];
+  }, [sceneType, pairAnalysis, synthesisResult, controls.level]);
+
+  const currentPhase = controls.scrubPhase ?? 0;
+
+  const handleTimelineStepClick = useCallback((phase: number) => {
+    setControls(prev => ({ ...prev, scrubPhase: phase, paused: true }));
+  }, []);
 
   return (
     <Card className="bg-card/80 backdrop-blur border-border" data-tutorial-canvas>
@@ -192,6 +209,16 @@ export function TutorialCanvas({ showLattice, latticeElements, primaryPair, onSc
             {/* Level notice */}
             {levelText && (
               <LevelNotice text={levelText} level={controls.level} showAssumptions={showAssumptions} />
+            )}
+
+            {/* Why/How Timeline */}
+            {timelineSteps.length > 0 && (
+              <WhyHowTimeline
+                steps={timelineSteps}
+                currentPhase={currentPhase}
+                onStepClick={handleTimelineStepClick}
+                level={controls.level}
+              />
             )}
           </div>
         </CollapsibleContent>
