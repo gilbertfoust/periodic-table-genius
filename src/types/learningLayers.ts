@@ -5,6 +5,7 @@ export interface SceneControls {
   speed: number;       // 0.25 – 2
   paused: boolean;
   overlays: Record<string, boolean>;
+  scrubPhase: number | null; // null = auto, 0-1 = manual override
 }
 
 export const DEFAULT_CONTROLS: SceneControls = {
@@ -12,6 +13,7 @@ export const DEFAULT_CONTROLS: SceneControls = {
   speed: 1,
   paused: false,
   overlays: {},
+  scrubPhase: null,
 };
 
 /* ── Per-scene "What to notice" text ─────────────── */

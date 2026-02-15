@@ -23,6 +23,11 @@ export function LatticeScene({ elements, controls, onResetRef }: Props) {
   const visibleRef = useRef(0);
   const showUnitCell = !!controls.overlays['unitCell'];
 
+  const totalDuration = useMemo(() => {
+    const size = 3;
+    return (size * size * size - 1) * 0.06 + 0.5; // last delay + buffer
+  }, []);
+
   const nodes = useMemo<Node[]>(() => {
     const list: Node[] = [];
     const size = 3;
@@ -54,6 +59,10 @@ export function LatticeScene({ elements, controls, onResetRef }: Props) {
   if (onResetRef) onResetRef.current = reset;
 
   useFrame(({ clock }) => {
+    if (controls.scrubPhase !== null) {
+      visibleRef.current = controls.scrubPhase * totalDuration;
+      return;
+    }
     if (controls.paused) return;
     if (startTime.current === null) startTime.current = clock.elapsedTime;
     const elapsed = (clock.elapsedTime - startTime.current) * controls.speed;

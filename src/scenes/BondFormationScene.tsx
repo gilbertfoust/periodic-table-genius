@@ -1,6 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { Html, OrbitControls } from '@react-three/drei';
 import type { PairAnalysis } from '@/utils/interactionPredictor';
 import type { SceneControls } from '@/types/learningLayers';
 import type { Group } from 'three';
@@ -23,10 +23,12 @@ export function BondFormationScene({ analysis, controls }: Props) {
   const progressRef = useRef(0);
 
   useFrame((_, delta) => {
-    if (!controls.paused) {
+    if (controls.scrubPhase !== null) {
+      progressRef.current = controls.scrubPhase;
+    } else if (!controls.paused) {
       progressRef.current = Math.min(progressRef.current + delta * 0.4 * controls.speed, 1);
     }
-    if (groupRef.current) groupRef.current.rotation.y += (controls.paused ? 0 : delta * 0.15 * controls.speed);
+    if (groupRef.current) groupRef.current.rotation.y += (controls.paused && controls.scrubPhase === null ? 0 : delta * 0.15 * controls.speed);
   });
 
   const isUncertain = analysis.bondConfidence === 'uncertain';
@@ -44,51 +46,73 @@ export function BondFormationScene({ analysis, controls }: Props) {
 
   if (isUncertain) {
     return (
-      <group ref={groupRef}>
-        <group position={[-1.2, 0, 0]}>
-          <mesh><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color={colorA} transparent opacity={0.35} /></mesh>
+      <>
+        <OrbitControls enableDamping dampingFactor={0.1} enableZoom enablePan={false} />
+        <group ref={groupRef}>
+          <group position={[-1.2, 0, 0]}>
+            <mesh><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color={colorA} transparent opacity={0.35} /></mesh>
+          </group>
+          <group position={[1.2, 0, 0]}>
+            <mesh><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color={colorB} transparent opacity={0.35} /></mesh>
+          </group>
+          <Html center>
+            <span style={{ color: '#fbbf24', fontSize: 28, fontWeight: 900, pointerEvents: 'none' }}>?</span>
+          </Html>
+          <Html center position={[-1.2, -0.8, 0]}>
+            <span style={{ color: '#e2e8f0', fontSize: 10, pointerEvents: 'none' }}>{analysis.a.sym}</span>
+          </Html>
+          <Html center position={[1.2, -0.8, 0]}>
+            <span style={{ color: '#e2e8f0', fontSize: 10, pointerEvents: 'none' }}>{analysis.b.sym}</span>
+          </Html>
         </group>
-        <group position={[1.2, 0, 0]}>
-          <mesh><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color={colorB} transparent opacity={0.35} /></mesh>
-        </group>
-        <Html center>
-          <span style={{ color: '#fbbf24', fontSize: 28, fontWeight: 900, pointerEvents: 'none' }}>?</span>
-        </Html>
-        <Html center position={[-1.2, -0.8, 0]}>
-          <span style={{ color: '#e2e8f0', fontSize: 10, pointerEvents: 'none' }}>{analysis.a.sym}</span>
-        </Html>
-        <Html center position={[1.2, -0.8, 0]}>
-          <span style={{ color: '#e2e8f0', fontSize: 10, pointerEvents: 'none' }}>{analysis.b.sym}</span>
-        </Html>
-      </group>
+      </>
     );
   }
 
   if (bt === 'Ionic') {
-    return <IonicScene groupRef={groupRef} progressRef={progressRef} colorA={colorA} colorB={colorB} donorLeft={donorLeft} analysis={analysis} showCharges={showCharges} level={level} />;
+    return (
+      <>
+        <OrbitControls enableDamping dampingFactor={0.1} enableZoom enablePan={false} />
+        <IonicScene groupRef={groupRef} progressRef={progressRef} colorA={colorA} colorB={colorB} donorLeft={donorLeft} analysis={analysis} showCharges={showCharges} level={level} />
+      </>
+    );
   }
 
   if (bt.includes('covalent') || bt.includes('Covalent') || bt.includes('polar')) {
-    return <CovalentScene groupRef={groupRef} progressRef={progressRef} colorA={colorA} colorB={colorB} showDipole={showDipole} analysis={analysis} level={level} />;
+    return (
+      <>
+        <OrbitControls enableDamping dampingFactor={0.1} enableZoom enablePan={false} />
+        <CovalentScene groupRef={groupRef} progressRef={progressRef} colorA={colorA} colorB={colorB} showDipole={showDipole} analysis={analysis} level={level} />
+      </>
+    );
   }
 
   if (bt.includes('Metallic') || bt.includes('alloy')) {
-    return <MetallicScene groupRef={groupRef} colorA={colorA} colorB={colorB} />;
+    return (
+      <>
+        <OrbitControls enableDamping dampingFactor={0.1} enableZoom enablePan={false} />
+        <MetallicScene groupRef={groupRef} colorA={colorA} colorB={colorB} />
+      </>
+    );
   }
 
   return (
-    <group ref={groupRef}>
-      <mesh position={[-1, 0, 0]}><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color={colorA} /></mesh>
-      <mesh position={[1, 0, 0]}><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color={colorB} /></mesh>
-      <Html center position={[0, 1, 0]}>
-        <span style={{ color: '#94a3b8', fontSize: 11, pointerEvents: 'none' }}>No typical bond</span>
-      </Html>
-    </group>
+    <>
+      <OrbitControls enableDamping dampingFactor={0.1} enableZoom enablePan={false} />
+      <group ref={groupRef}>
+        <mesh position={[-1, 0, 0]}><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color={colorA} /></mesh>
+        <mesh position={[1, 0, 0]}><sphereGeometry args={[0.5, 16, 16]} /><meshStandardMaterial color={colorB} /></mesh>
+        <Html center position={[0, 1, 0]}>
+          <span style={{ color: '#94a3b8', fontSize: 11, pointerEvents: 'none' }}>No typical bond</span>
+        </Html>
+      </group>
+    </>
   );
 }
 
 function IonicScene({ groupRef, progressRef, colorA, colorB, donorLeft, analysis, showCharges, level }: any) {
   const electronRef = useRef<THREE.Mesh>(null);
+  const [inspected, setInspected] = useState<'a' | 'b' | null>(null);
 
   useFrame(() => {
     const t = progressRef.current;
@@ -101,18 +125,23 @@ function IonicScene({ groupRef, progressRef, colorA, colorB, donorLeft, analysis
   });
 
   const t = progressRef.current;
-  const donorSym = donorLeft ? analysis.a.sym : analysis.b.sym;
-  const acceptorSym = donorLeft ? analysis.b.sym : analysis.a.sym;
   const donorIon = donorLeft ? analysis.ionA : analysis.ionB;
   const acceptorIon = donorLeft ? analysis.ionB : analysis.ionA;
 
+  const tooltipForAtom = (which: 'a' | 'b') => {
+    const el = which === 'a' ? analysis.a : analysis.b;
+    const ion = which === 'a' ? analysis.ionA : analysis.ionB;
+    const role = donorLeft ? (which === 'a' ? 'electron donor' : 'electron acceptor') : (which === 'a' ? 'electron acceptor' : 'electron donor');
+    return `${el.name}, EN = ${el.en ?? 'N/A'}, Role: ${role}`;
+  };
+
   return (
     <group ref={groupRef}>
-      <mesh position={[-1.2, 0, 0]}>
+      <mesh position={[-1.2, 0, 0]} onClick={(e) => { e.stopPropagation(); setInspected(inspected === 'a' ? null : 'a'); }}>
         <sphereGeometry args={[0.5, 16, 16]} />
         <meshStandardMaterial color={colorA} />
       </mesh>
-      <mesh position={[1.2, 0, 0]}>
+      <mesh position={[1.2, 0, 0]} onClick={(e) => { e.stopPropagation(); setInspected(inspected === 'b' ? null : 'b'); }}>
         <sphereGeometry args={[0.5, 16, 16]} />
         <meshStandardMaterial color={colorB} />
       </mesh>
@@ -127,6 +156,14 @@ function IonicScene({ groupRef, progressRef, colorA, colorB, donorLeft, analysis
       <Html center position={[1.2, -0.8, 0]}>
         <span style={{ color: '#e2e8f0', fontSize: 10, pointerEvents: 'none' }}>{analysis.b.sym}</span>
       </Html>
+      {/* Click-to-inspect tooltip */}
+      {inspected && (
+        <Html center position={[inspected === 'a' ? -1.2 : 1.2, 1.1, 0]}>
+          <div style={{ background: 'rgba(0,0,0,0.9)', color: '#e2e8f0', padding: '4px 8px', borderRadius: 6, fontSize: 9, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+            {tooltipForAtom(inspected)}
+          </div>
+        </Html>
+      )}
       {/* Charge labels after transfer */}
       {showCharges && t > 0.9 && (
         <>
@@ -150,6 +187,7 @@ function CovalentScene({ groupRef, progressRef, colorA, colorB, showDipole, anal
   const leftRef = useRef<THREE.Mesh>(null);
   const rightRef = useRef<THREE.Mesh>(null);
   const cloudRef = useRef<THREE.Mesh>(null);
+  const [inspected, setInspected] = useState<'a' | 'b' | null>(null);
 
   useFrame(() => {
     const t = progressRef.current;
@@ -164,13 +202,18 @@ function CovalentScene({ groupRef, progressRef, colorA, colorB, showDipole, anal
 
   const higherEN = (analysis.b.en ?? 0) >= (analysis.a.en ?? 0);
 
+  const tooltipForAtom = (which: 'a' | 'b') => {
+    const el = which === 'a' ? analysis.a : analysis.b;
+    return `${el.name}, EN = ${el.en ?? 'N/A'}, Role: shared (covalent)`;
+  };
+
   return (
     <group ref={groupRef}>
-      <mesh ref={leftRef} position={[-0.9, 0, 0]}>
+      <mesh ref={leftRef} position={[-0.9, 0, 0]} onClick={(e) => { e.stopPropagation(); setInspected(inspected === 'a' ? null : 'a'); }}>
         <sphereGeometry args={[0.45, 16, 16]} />
         <meshStandardMaterial color={colorA} />
       </mesh>
-      <mesh ref={rightRef} position={[0.9, 0, 0]}>
+      <mesh ref={rightRef} position={[0.9, 0, 0]} onClick={(e) => { e.stopPropagation(); setInspected(inspected === 'b' ? null : 'b'); }}>
         <sphereGeometry args={[0.45, 16, 16]} />
         <meshStandardMaterial color={colorB} />
       </mesh>
@@ -178,6 +221,14 @@ function CovalentScene({ groupRef, progressRef, colorA, colorB, showDipole, anal
         <sphereGeometry args={[0.6, 16, 16]} />
         <meshStandardMaterial color="#10b981" transparent opacity={0} />
       </mesh>
+      {/* Click-to-inspect tooltip */}
+      {inspected && (
+        <Html center position={[inspected === 'a' ? -0.45 : 0.45, 0.9, 0]}>
+          <div style={{ background: 'rgba(0,0,0,0.9)', color: '#e2e8f0', padding: '4px 8px', borderRadius: 6, fontSize: 9, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+            {tooltipForAtom(inspected)}
+          </div>
+        </Html>
+      )}
       {/* Dipole arrow */}
       {showDipole && (
         <>

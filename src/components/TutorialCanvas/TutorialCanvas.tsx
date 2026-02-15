@@ -1,8 +1,8 @@
-import { useState, useMemo, useRef, useCallback, Suspense } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useSelection } from '@/state/selectionStore';
 import { byZ, type Element } from '@/data/elements';
-import { analyzePair, type PairAnalysis } from '@/utils/interactionPredictor';
+import type { PairAnalysis } from '@/utils/interactionPredictor';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,13 @@ import { LatticeScene, getLatticeCaption } from '@/scenes/LatticeScene';
 import { SceneControlsUI } from './SceneControls';
 import { LevelNotice } from './LevelNotice';
 import { atomNotice, bondNotice, latticeNotice, type SceneControls, DEFAULT_CONTROLS } from '@/types/learningLayers';
+import type { LearningLevel } from '@/types/learningLayers';
 
 interface Props {
   showLattice: boolean;
   latticeElements: Element[];
+  primaryPair?: PairAnalysis | null;
+  onSceneStateChange?: (state: { level: LearningLevel; isExpanded: boolean; sceneType: string }) => void;
 }
 
 type OverlayDef = { key: string; label: string; levelMin: 'beginner' | 'intermediate' | 'advanced' };
@@ -34,7 +37,7 @@ const LATTICE_OVERLAYS: OverlayDef[] = [
   { key: 'unitCell', label: 'Unit cell', levelMin: 'intermediate' },
 ];
 
-export function TutorialCanvas({ showLattice, latticeElements }: Props) {
+export function TutorialCanvas({ showLattice, latticeElements, primaryPair, onSceneStateChange }: Props) {
   const [open, setOpen] = useState(true);
   const [controls, setControls] = useState<SceneControls>({ ...DEFAULT_CONTROLS, overlays: { valenceHighlight: true, charges: true } });
   const { selectedElements } = useSelection();
@@ -45,10 +48,8 @@ export function TutorialCanvas({ showLattice, latticeElements }: Props) {
     [selectedElements]
   );
 
-  const pairAnalysis = useMemo(
-    () => elements.length >= 2 ? analyzePair(elements[0], elements[1]) : null,
-    [elements]
-  );
+  // Use primaryPair from props (single source of truth) instead of computing locally
+  const pairAnalysis = primaryPair ?? null;
 
   // Determine scene type
   type SceneType = 'lattice' | 'bond' | 'atom' | 'none';
@@ -70,7 +71,13 @@ export function TutorialCanvas({ showLattice, latticeElements }: Props) {
     sceneKey = `atom-${elements[0].Z}`;
   }
 
+  // Notify parent of scene state for lab workbook observe3D gating
+  useEffect(() => {
+    onSceneStateChange?.({ level: controls.level, isExpanded: open, sceneType });
+  }, [controls.level, open, sceneType, onSceneStateChange]);
+
   const overlayDefs = sceneType === 'atom' ? ATOM_OVERLAYS : sceneType === 'bond' ? BOND_OVERLAYS : sceneType === 'lattice' ? LATTICE_OVERLAYS : [];
+  const showScrubber = sceneType === 'bond' || sceneType === 'lattice';
 
   const showAssumptions = pairAnalysis ? (pairAnalysis.bondConfidence === 'uncertain' || pairAnalysis.uncertaintyFlags.length > 0) : false;
 
@@ -98,7 +105,7 @@ export function TutorialCanvas({ showLattice, latticeElements }: Props) {
   const bondAccounting = sceneType === 'bond' && pairAnalysis ? getBondAccountingData(pairAnalysis) : null;
 
   return (
-    <Card className="bg-card/80 backdrop-blur border-border">
+    <Card className="bg-card/80 backdrop-blur border-border" data-tutorial-canvas>
       <Collapsible open={open} onOpenChange={setOpen}>
         <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -122,6 +129,7 @@ export function TutorialCanvas({ showLattice, latticeElements }: Props) {
                 overlayDefs={overlayDefs}
                 showReset={sceneType === 'lattice'}
                 onReset={handleReset}
+                showScrubber={showScrubber}
               />
             )}
 
@@ -147,6 +155,14 @@ export function TutorialCanvas({ showLattice, latticeElements }: Props) {
                 </Canvas>
               </div>
             </WebGLErrorBoundary>
+
+            {/* Viewpoint shortcuts */}
+            {sceneType !== 'none' && (
+              <div className="flex gap-1">
+                {/* Note: viewpoint shortcuts change camera via Canvas re-key; OrbitControls handles orbit */}
+                <span className="text-[10px] text-muted-foreground mr-1">Click & drag to orbit</span>
+              </div>
+            )}
 
             {/* Caption */}
             <p className="text-xs text-muted-foreground italic">{caption}</p>
