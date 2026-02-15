@@ -50,7 +50,15 @@ export function SceneControlsUI({ controls, onChange, overlayDefs, showReset, on
 
       {/* Play/Pause + Speed */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setPaused(!paused)}>
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
+          if (paused) {
+            // Play: clear scrubPhase and resume
+            onChange({ ...controls, scrubPhase: null, paused: false });
+          } else {
+            // Pause: just pause, keep scrubPhase
+            onChange({ ...controls, paused: true });
+          }
+        }}>
           {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
         </Button>
         {showReset && onReset && (
@@ -75,7 +83,6 @@ export function SceneControlsUI({ controls, onChange, overlayDefs, showReset, on
             min={0} max={100} step={1}
             value={[scrubPhase !== null ? scrubPhase * 100 : 0]}
             onValueChange={([v]) => onChange({ ...controls, scrubPhase: v / 100, paused: true })}
-            onValueCommit={() => onChange({ ...controls, scrubPhase: null })}
             className="flex-1"
           />
           {scrubPhase !== null && (
