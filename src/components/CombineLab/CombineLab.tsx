@@ -287,7 +287,7 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
                 className="w-full gap-2 text-xs"
               >
                 <Send className="h-3.5 w-3.5" />
-                Send to Mixture Lab
+                Send to Synthesis Mixture Lab
               </Button>
             ) : prediction.matchedReactionId === null && onSendToSynthesis ? (
               <Button

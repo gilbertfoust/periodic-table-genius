@@ -83,8 +83,8 @@ export function MixtureLab({ prefillReactionId, synthesisInput, primaryPair, onV
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-3">
-            <TabsTrigger value="curated" className="text-xs">Curated Reactions</TabsTrigger>
             <TabsTrigger value="synthesis" className="text-xs">Synthesis</TabsTrigger>
+            <TabsTrigger value="curated" className="text-xs">Curated Reactions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="curated">
