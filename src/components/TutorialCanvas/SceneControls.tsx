@@ -10,6 +10,7 @@ interface Props {
   overlayDefs: { key: string; label: string; levelMin: LearningLevel }[];
   showReset?: boolean;
   onReset?: () => void;
+  showScrubber?: boolean;
 }
 
 const LEVELS: LearningLevel[] = ['beginner', 'intermediate', 'advanced'];
@@ -17,8 +18,8 @@ const LEVEL_LABELS: Record<LearningLevel, string> = { beginner: 'Beginner', inte
 
 const levelIdx = (l: LearningLevel) => LEVELS.indexOf(l);
 
-export function SceneControlsUI({ controls, onChange, overlayDefs, showReset, onReset }: Props) {
-  const { level, speed, paused, overlays } = controls;
+export function SceneControlsUI({ controls, onChange, overlayDefs, showReset, onReset, showScrubber }: Props) {
+  const { level, speed, paused, overlays, scrubPhase } = controls;
 
   const setLevel = (l: LearningLevel) => onChange({ ...controls, level: l });
   const setPaused = (p: boolean) => onChange({ ...controls, paused: p });
@@ -65,6 +66,23 @@ export function SceneControlsUI({ controls, onChange, overlayDefs, showReset, on
           className="flex-1"
         />
       </div>
+
+      {/* Animation Scrubber */}
+      {showScrubber && (
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground w-12 shrink-0">Scrub:</span>
+          <Slider
+            min={0} max={100} step={1}
+            value={[scrubPhase !== null ? scrubPhase * 100 : 0]}
+            onValueChange={([v]) => onChange({ ...controls, scrubPhase: v / 100, paused: true })}
+            onValueCommit={() => onChange({ ...controls, scrubPhase: null })}
+            className="flex-1"
+          />
+          {scrubPhase !== null && (
+            <span className="text-[10px] text-muted-foreground">{Math.round(scrubPhase * 100)}%</span>
+          )}
+        </div>
+      )}
 
       {/* Overlays */}
       {visibleOverlays.length > 0 && (

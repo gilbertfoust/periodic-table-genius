@@ -1,5 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { SelectionProvider } from '@/state/selectionStore';
+import { useAnalysis } from '@/hooks/useAnalysis';
+import type { SlotEntry } from '@/utils/synthesisEngine';
 import type { DemoKey } from '@/components/SelectionTray';
 import { Header } from '@/components/Header';
 import { PeriodicTable } from '@/components/PeriodicTable/PeriodicTable';
@@ -9,15 +11,35 @@ import { InteractionInspector } from '@/components/InteractionInspector/Interact
 import { CombineLab } from '@/components/CombineLab/CombineLab';
 import { MixtureLab } from '@/components/MixtureLab/MixtureLab';
 import { TutorialCanvas } from '@/components/TutorialCanvas/TutorialCanvas';
+import { ExplainerPanel } from '@/components/ExplainerPanel';
+import { LabLauncher } from '@/components/LabWorkbook/LabLauncher';
+import { LabWorkbookPanel } from '@/components/LabWorkbook/LabWorkbookPanel';
 import { REACTIONS } from '@/data/reactions';
 import type { CombinePrediction } from '@/utils/interactionPredictor';
+import type { SynthesisResult } from '@/utils/synthesisEngine';
+import type { LearningLevel } from '@/types/learningLayers';
 
-const Index = () => {
+function IndexContent() {
   const [prefillReactionId, setPrefillReactionId] = useState<string | null>(null);
   const [combinePrediction, setCombinePrediction] = useState<CombinePrediction | null>(null);
+  const [synthesisInput, setSynthesisInput] = useState<SlotEntry[] | null>(null);
+  const [synthesisResult, setSynthesisResult] = useState<SynthesisResult | null>(null);
+  const [activeLabId, setActiveLabId] = useState<string | null>(null);
+  const [sceneControls, setSceneControls] = useState<{ level: LearningLevel; isExpanded: boolean; sceneType: string }>({
+    level: 'beginner', isExpanded: true, sceneType: 'none',
+  });
+
+  const { elements, primaryPair, allPairs, combinePrediction: analysisPrediction } = useAnalysis();
 
   const handleSendToMixtureLab = useCallback((reactionId: string) => {
     setPrefillReactionId(reactionId);
+    setTimeout(() => {
+      document.getElementById('mixture-lab')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  }, []);
+
+  const handleSendToSynthesis = useCallback((slots: SlotEntry[]) => {
+    setSynthesisInput(slots);
     setTimeout(() => {
       document.getElementById('mixture-lab')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -28,6 +50,12 @@ const Index = () => {
       handleSendToMixtureLab('precip_agcl');
     }
   }, [handleSendToMixtureLab]);
+
+  const handleViewIn3D = useCallback((zs: number[]) => {
+    // This is triggered by Synthesis "View in 3D" — just scrolls to 3D view
+    // Does NOT auto-advance workbook steps (per revision)
+    document.querySelector('[data-tutorial-canvas]')?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
 
   const showLattice = useMemo(() =>
     combinePrediction !== null
@@ -41,35 +69,83 @@ const Index = () => {
     [showLattice, combinePrediction]
   );
 
+  // Scene readiness for lab workbook observe3D gating
+  const labSceneReady = useMemo(() => {
+    if (!sceneControls.isExpanded) return false;
+    if (!activeLabId) return false;
+    // Check if the current scene matches what the lab needs
+    return sceneControls.sceneType !== 'none';
+  }, [sceneControls.isExpanded, sceneControls.sceneType, activeLabId]);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="max-w-[1400px] mx-auto px-4 py-6">
+        <Header />
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-4 items-start">
+          <div>
+            <PeriodicTable />
+            <SelectionTray onDemoScenario={handleDemoScenario}>
+              <LabLauncher
+                onLabStart={setActiveLabId}
+                onStartPrecipLab={handleSendToMixtureLab}
+              />
+            </SelectionTray>
+          </div>
+          <div className="space-y-4">
+            <ElementTutor />
+            <TutorialCanvas
+              showLattice={showLattice}
+              latticeElements={latticeElements}
+              primaryPair={primaryPair}
+              onSceneStateChange={setSceneControls}
+            />
+            <ExplainerPanel
+              primaryPair={primaryPair}
+              combinePrediction={analysisPrediction}
+              synthesisResult={synthesisResult}
+              level={sceneControls.level}
+            />
+            <InteractionInspector />
+            {activeLabId && (
+              <LabWorkbookPanel
+                labId={activeLabId}
+                onClose={() => setActiveLabId(null)}
+                sceneReady={labSceneReady}
+                level={sceneControls.level}
+                primaryPair={primaryPair}
+              />
+            )}
+          </div>
+        </div>
+
+        <CombineLab
+          onSendToMixtureLab={handleSendToMixtureLab}
+          onSendToSynthesis={handleSendToSynthesis}
+          onPredictionChange={setCombinePrediction}
+        />
+
+        <div id="mixture-lab" className="mt-4">
+          <MixtureLab
+            prefillReactionId={prefillReactionId}
+            synthesisInput={synthesisInput}
+            primaryPair={primaryPair}
+            onViewIn3D={handleViewIn3D}
+          />
+        </div>
+
+        <footer className="mt-4 text-xs text-muted-foreground">
+          Next extensions: more overlays (atomic radius, ionization energy), more reaction families, and a lesson path that saves progress.
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+const Index = () => {
   return (
     <SelectionProvider>
-      <div className="min-h-screen bg-background">
-        <div className="max-w-[1400px] mx-auto px-4 py-6">
-          <Header />
-
-          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-4 items-start">
-            <div>
-              <PeriodicTable />
-              <SelectionTray onDemoScenario={handleDemoScenario} />
-            </div>
-            <div className="space-y-4">
-              <ElementTutor />
-              <TutorialCanvas showLattice={showLattice} latticeElements={latticeElements} />
-              <InteractionInspector />
-            </div>
-          </div>
-
-          <CombineLab onSendToMixtureLab={handleSendToMixtureLab} onPredictionChange={setCombinePrediction} />
-
-          <div id="mixture-lab" className="mt-4">
-            <MixtureLab prefillReactionId={prefillReactionId} />
-          </div>
-
-          <footer className="mt-4 text-xs text-muted-foreground">
-            Next extensions that would fit well: more overlays (atomic radius, ionization energy), more reaction families, and a lesson path that saves progress.
-          </footer>
-        </div>
-      </div>
+      <IndexContent />
     </SelectionProvider>
   );
 };

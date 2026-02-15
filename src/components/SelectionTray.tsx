@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { X, Plus, MousePointer } from 'lucide-react';
 import { useSelection } from '@/state/selectionStore';
 import { byZ } from '@/data/elements';
@@ -16,6 +16,7 @@ export type DemoKey = 'ionic' | 'covalent' | 'precip' | 'hcl_polar' | 'na_o_ioni
 
 interface SelectionTrayProps {
   onDemoScenario?: (scenario: DemoKey) => void;
+  children?: ReactNode;
 }
 
 const DEMOS: { key: DemoKey; label: string; zs: number[] }[] = [
@@ -27,7 +28,7 @@ const DEMOS: { key: DemoKey; label: string; zs: number[] }[] = [
   { key: 'fe_o_uncertain', label: 'Fe + O → Uncertain', zs: [26, 8] },
 ];
 
-export function SelectionTray({ onDemoScenario }: SelectionTrayProps) {
+export function SelectionTray({ onDemoScenario, children }: SelectionTrayProps) {
   const { selectedElements, removeElement, clearSelection, multiSelectMode, setMultiSelectMode, setSelectedElements } = useSelection();
 
   const handleDemo = useCallback((demo: typeof DEMOS[number]) => {
@@ -51,7 +52,7 @@ export function SelectionTray({ onDemoScenario }: SelectionTrayProps) {
       {/* Demo scenarios */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-      <Button variant="outline" size="sm" className="h-7 text-xs">
+          <Button variant="outline" size="sm" className="h-7 text-xs">
             Tutorial presets
           </Button>
         </DropdownMenuTrigger>
@@ -63,6 +64,9 @@ export function SelectionTray({ onDemoScenario }: SelectionTrayProps) {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Lab Workbook launcher (passed as children) */}
+      {children}
 
       {/* Selected element badges */}
       {selectedElements.length > 0 && (

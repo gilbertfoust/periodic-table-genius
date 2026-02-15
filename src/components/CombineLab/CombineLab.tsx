@@ -4,10 +4,11 @@ import { byZ, type Element } from '@/data/elements';
 import { REACTIONS } from '@/data/reactions';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { predictCombination, type Confidence, type CombinePrediction } from '@/utils/interactionPredictor';
+import type { SlotEntry } from '@/utils/synthesisEngine';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FlaskConical, Send, X, Plus } from 'lucide-react';
+import { FlaskConical, Send, X, Plus, Minus, Beaker } from 'lucide-react';
 
 const CONFIDENCE_STYLES: Record<Confidence, { border: string; text: string; label: string }> = {
   likely:    { border: 'border-emerald-500/40', text: 'text-emerald-400', label: 'Likely' },
@@ -17,12 +18,18 @@ const CONFIDENCE_STYLES: Record<Confidence, { border: string; text: string; labe
 
 interface CombineLabProps {
   onSendToMixtureLab?: (reactionId: string) => void;
+  onSendToSynthesis?: (slots: SlotEntry[]) => void;
   onPredictionChange?: (prediction: CombinePrediction | null) => void;
 }
 
-export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLabProps) {
+interface SlotState {
+  Z: number | null;
+  count: number;
+}
+
+export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPredictionChange }: CombineLabProps) {
   const { selectedElements } = useSelection();
-  const [slots, setSlots] = useState<(number | null)[]>([null, null]);
+  const [slots, setSlots] = useState<SlotState[]>([{ Z: null, count: 1 }, { Z: null, count: 1 }]);
 
   const availableElements = useMemo(() =>
     selectedElements.map(Z => byZ(Z)).filter(Boolean) as Element[],
@@ -33,9 +40,9 @@ export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLa
     setSlots(prev => {
       const next = [...prev];
       // Remove from any other slot
-      const existingIdx = next.indexOf(Z);
-      if (existingIdx !== -1) next[existingIdx] = null;
-      next[slotIndex] = Z;
+      const existingIdx = next.findIndex(s => s.Z === Z);
+      if (existingIdx !== -1 && existingIdx !== slotIndex) next[existingIdx] = { ...next[existingIdx], Z: null, count: 1 };
+      next[slotIndex] = { Z, count: next[slotIndex].count || 1 };
       return next;
     });
   }, []);
@@ -43,13 +50,22 @@ export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLa
   const clearSlot = useCallback((slotIndex: number) => {
     setSlots(prev => {
       const next = [...prev];
-      next[slotIndex] = null;
+      next[slotIndex] = { Z: null, count: 1 };
+      return next;
+    });
+  }, []);
+
+  const setCount = useCallback((slotIndex: number, delta: number) => {
+    setSlots(prev => {
+      const next = [...prev];
+      const newCount = Math.max(1, Math.min(8, next[slotIndex].count + delta));
+      next[slotIndex] = { ...next[slotIndex], count: newCount };
       return next;
     });
   }, []);
 
   const addSlot = useCallback(() => {
-    setSlots(prev => prev.length < 4 ? [...prev, null] : prev);
+    setSlots(prev => prev.length < 4 ? [...prev, { Z: null, count: 1 }] : prev);
   }, []);
 
   const removeSlot = useCallback((index: number) => {
@@ -57,7 +73,7 @@ export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLa
   }, []);
 
   const filledElements = useMemo(() =>
-    slots.map(Z => Z !== null ? byZ(Z) : null).filter(Boolean) as Element[],
+    slots.map(s => s.Z !== null ? byZ(s.Z) : null).filter(Boolean) as Element[],
     [slots]
   );
 
@@ -75,9 +91,21 @@ export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLa
 
   // Elements available for assignment (in selection but not yet in a slot)
   const unassigned = useMemo(() =>
-    availableElements.filter(e => !slots.includes(e.Z)),
+    availableElements.filter(e => !slots.some(s => s.Z === e.Z)),
     [availableElements, slots]
   );
+
+  // Build SlotEntry[] for synthesis
+  const slotEntries = useMemo<SlotEntry[]>(() =>
+    slots.filter(s => s.Z !== null).map(s => ({ Z: s.Z!, count: s.count })),
+    [slots]
+  );
+
+  // Formula display helper
+  const subscript = (n: number) => {
+    const subs = '₀₁₂₃₄₅₆₇₈₉';
+    return String(n).split('').map(d => subs[parseInt(d)] || d).join('');
+  };
 
   return (
     <Card className="bg-card/80 backdrop-blur border-border">
@@ -93,20 +121,40 @@ export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLa
         <div className="space-y-2">
           <div className="text-[11px] text-muted-foreground font-medium">Reactant slots ({slots.length}/4)</div>
           <div className="flex flex-wrap gap-2">
-            {slots.map((Z, i) => {
-              const el = Z !== null ? byZ(Z) : null;
+            {slots.map((slot, i) => {
+              const el = slot.Z !== null ? byZ(slot.Z) : null;
               const color = el ? (CATEGORY_COLORS[el.category] || '#9aa6c8') : undefined;
               return (
                 <div
                   key={i}
-                  className={`relative min-w-[80px] h-16 rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-all ${
+                  className={`relative min-w-[80px] h-20 rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-all ${
                     el ? 'border-primary/40 bg-primary/5' : 'border-border/50 bg-secondary/10 hover:border-border'
                   }`}
                 >
                   {el ? (
                     <>
-                      <span className="font-bold text-lg" style={{ color }}>{el.sym}</span>
+                      <span className="font-bold text-lg" style={{ color }}>
+                        {el.sym}{slot.count > 1 ? <span className="text-xs">{subscript(slot.count)}</span> : ''}
+                      </span>
                       <span className="text-[10px] text-foreground/70">{el.name}</span>
+                      {/* Count controls */}
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <button
+                          onClick={() => setCount(i, -1)}
+                          className="w-4 h-4 rounded flex items-center justify-center bg-secondary/40 hover:bg-secondary/60 transition-colors"
+                          disabled={slot.count <= 1}
+                        >
+                          <Minus className="h-2.5 w-2.5 text-muted-foreground" />
+                        </button>
+                        <span className="text-[10px] text-foreground/80 w-3 text-center">{slot.count}</span>
+                        <button
+                          onClick={() => setCount(i, 1)}
+                          className="w-4 h-4 rounded flex items-center justify-center bg-secondary/40 hover:bg-secondary/60 transition-colors"
+                          disabled={slot.count >= 8}
+                        >
+                          <Plus className="h-2.5 w-2.5 text-muted-foreground" />
+                        </button>
+                      </div>
                       <button
                         onClick={() => clearSlot(i)}
                         className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive/80 flex items-center justify-center hover:bg-destructive transition-colors"
@@ -135,7 +183,7 @@ export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLa
             {slots.length < 4 && (
               <button
                 onClick={addSlot}
-                className="min-w-[48px] h-16 rounded-xl border-2 border-dashed border-border/30 flex items-center justify-center hover:border-primary/30 transition-colors"
+                className="min-w-[48px] h-20 rounded-xl border-2 border-dashed border-border/30 flex items-center justify-center hover:border-primary/30 transition-colors"
                 aria-label="Add slot"
               >
                 <Plus className="h-4 w-4 text-muted-foreground" />
@@ -151,7 +199,7 @@ export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLa
             <div className="flex flex-wrap gap-1.5">
               {unassigned.map(el => {
                 const color = CATEGORY_COLORS[el.category] || '#9aa6c8';
-                const firstEmpty = slots.findIndex(s => s === null);
+                const firstEmpty = slots.findIndex(s => s.Z === null);
                 return (
                   <button
                     key={el.Z}
@@ -202,7 +250,7 @@ export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLa
 
             <p className="text-[11px] text-foreground/75 leading-relaxed">{prediction.explanation}</p>
 
-            {/* Send to Mixture Lab */}
+            {/* Send to Mixture Lab or Synthesis */}
             {prediction.matchedReactionId && onSendToMixtureLab ? (
               <Button
                 size="sm"
@@ -212,12 +260,16 @@ export function CombineLab({ onSendToMixtureLab, onPredictionChange }: CombineLa
                 <Send className="h-3.5 w-3.5" />
                 Send to Mixture Lab
               </Button>
-            ) : prediction.matchedReactionId === null ? (
-              <div className="border border-border/30 rounded-lg bg-background/20 p-2 text-center">
-                <p className="text-[11px] text-muted-foreground">
-                  This combination doesn't match a curated reaction. The prediction above is theoretical only.
-                </p>
-              </div>
+            ) : prediction.matchedReactionId === null && onSendToSynthesis ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onSendToSynthesis(slotEntries)}
+                className="w-full gap-2 text-xs"
+              >
+                <Beaker className="h-3.5 w-3.5" />
+                Send to Synthesis
+              </Button>
             ) : null}
           </div>
         )}
