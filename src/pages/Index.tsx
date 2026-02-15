@@ -14,6 +14,7 @@ import { TutorialCanvas } from '@/components/TutorialCanvas/TutorialCanvas';
 import { ExplainerPanel } from '@/components/ExplainerPanel';
 import { LabLauncher } from '@/components/LabWorkbook/LabLauncher';
 import { LabWorkbookPanel } from '@/components/LabWorkbook/LabWorkbookPanel';
+import { DevDebugPanel } from '@/components/DevDebugPanel';
 import { REACTIONS } from '@/data/reactions';
 import type { CombinePrediction } from '@/utils/interactionPredictor';
 import type { SynthesisResult } from '@/utils/synthesisEngine';
@@ -25,6 +26,7 @@ function IndexContent() {
   const [synthesisInput, setSynthesisInput] = useState<SlotEntry[] | null>(null);
   const [synthesisResult, setSynthesisResult] = useState<SynthesisResult | null>(null);
   const [activeLabId, setActiveLabId] = useState<string | null>(null);
+  const [lastSendAction, setLastSendAction] = useState<{ type: 'curated' | 'synthesis'; ts: number } | null>(null);
   const [sceneControls, setSceneControls] = useState<{ level: LearningLevel; isExpanded: boolean; sceneType: string }>({
     level: 'beginner', isExpanded: true, sceneType: 'none',
   });
@@ -33,15 +35,17 @@ function IndexContent() {
 
   const handleSendToMixtureLab = useCallback((reactionId: string) => {
     setPrefillReactionId(reactionId);
-    setSynthesisInput(null); // clear synthesis when using curated
+    setSynthesisInput(null);
+    setLastSendAction({ type: 'curated', ts: Date.now() });
     setTimeout(() => {
       document.getElementById('mixture-lab')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   }, []);
 
   const handleSendToSynthesis = useCallback((slots: SlotEntry[]) => {
-    setSynthesisInput(slots);
-    setPrefillReactionId(null); // clear curated when using synthesis
+    setSynthesisInput(slots.map(s => ({ ...s }))); // deep clone
+    setPrefillReactionId(null);
+    setLastSendAction({ type: 'synthesis', ts: Date.now() });
     setTimeout(() => {
       document.getElementById('mixture-lab')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -118,6 +122,7 @@ function IndexContent() {
           onSendToMixtureLab={handleSendToMixtureLab}
           onSendToSynthesis={handleSendToSynthesis}
           onPredictionChange={setCombinePrediction}
+          primaryPair={primaryPair}
         />
 
         <div id="mixture-lab" className="mt-4">
@@ -133,6 +138,14 @@ function IndexContent() {
         <footer className="mt-4 text-xs text-muted-foreground">
           Next extensions: more overlays (atomic radius, ionization energy), more reaction families, and a lesson path that saves progress.
         </footer>
+
+        <DevDebugPanel
+          lastSendAction={lastSendAction}
+          curatedReactionId={prefillReactionId}
+          synthesisInput={synthesisInput}
+          synthesisResult={synthesisResult}
+          tutorialState={sceneControls ? { isExpanded: sceneControls.isExpanded, sceneType: sceneControls.sceneType, scrubPhase: null } : undefined}
+        />
       </div>
     </div>
   );

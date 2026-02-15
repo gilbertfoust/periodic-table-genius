@@ -3,8 +3,8 @@ import { useSelection } from '@/state/selectionStore';
 import { byZ, type Element } from '@/data/elements';
 import { REACTIONS } from '@/data/reactions';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
-import { predictCombination, type Confidence, type CombinePrediction } from '@/utils/interactionPredictor';
-import type { SlotEntry } from '@/utils/synthesisEngine';
+import { predictCombination, type Confidence, type CombinePrediction, type PairAnalysis } from '@/utils/interactionPredictor';
+import { formatFormula, synthesize, type SlotEntry } from '@/utils/synthesisEngine';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ interface CombineLabProps {
   onSendToMixtureLab?: (reactionId: string) => void;
   onSendToSynthesis?: (slots: SlotEntry[]) => void;
   onPredictionChange?: (prediction: CombinePrediction | null) => void;
+  primaryPair?: PairAnalysis | null;
 }
 
 interface SlotState {
@@ -27,7 +28,7 @@ interface SlotState {
   count: number;
 }
 
-export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPredictionChange }: CombineLabProps) {
+export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPredictionChange, primaryPair }: CombineLabProps) {
   const { selectedElements } = useSelection();
   const [slots, setSlots] = useState<SlotState[]>([{ Z: null, count: 1 }, { Z: null, count: 1 }]);
 
@@ -100,6 +101,16 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
     slots.filter(s => s.Z !== null).map(s => ({ Z: s.Z!, count: s.count })),
     [slots]
   );
+
+  // Count-truth: when counts > 1 or 3+ atoms, headline = formatFormula, classification from synthesize
+  const hasMultipleAtoms = slotEntries.some(s => s.count > 1) || slotEntries.length >= 3;
+  const countAwareResult = useMemo(() => {
+    if (hasMultipleAtoms && slotEntries.length >= 2) {
+      return synthesize(slotEntries, primaryPair ?? null);
+    }
+    return null;
+  }, [hasMultipleAtoms, slotEntries, primaryPair]);
+  const headlineFormula = hasMultipleAtoms ? formatFormula(slotEntries) : null;
 
   // Formula display helper
   const subscript = (n: number) => {
@@ -235,7 +246,25 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
               </Badge>
             </div>
 
-            <p className="text-xs text-foreground/88 leading-relaxed">{prediction.predictedOutcome}</p>
+            {headlineFormula ? (
+              <p className="text-sm font-bold text-foreground">{headlineFormula}</p>
+            ) : (
+              <p className="text-xs text-foreground/88 leading-relaxed">{prediction.predictedOutcome}</p>
+            )}
+            {headlineFormula && countAwareResult && (
+              <div className="flex gap-1.5 flex-wrap">
+                <Badge variant="secondary" className="text-[10px]">{countAwareResult.classification}</Badge>
+                <Badge variant="outline" className={`text-[10px] ${CONFIDENCE_STYLES[countAwareResult.confidence]?.text ?? ''}`}>
+                  {CONFIDENCE_STYLES[countAwareResult.confidence]?.label ?? countAwareResult.confidence}
+                </Badge>
+              </div>
+            )}
+            {headlineFormula && prediction.predictedOutcome && (
+              <p className="text-[11px] text-muted-foreground">Bond tendency: {prediction.predictedOutcome}</p>
+            )}
+            {!headlineFormula && (
+              <p className="hidden" />
+            )}
 
             <div className="grid grid-cols-2 gap-2">
               <div className="border border-border/30 rounded-lg bg-background/20 p-2">
