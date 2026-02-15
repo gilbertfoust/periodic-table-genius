@@ -1,75 +1,126 @@
 
 
-# Step 8.1 Hotfix: Fix 3 Live UI Bugs + Dev Debug Panel
+# Known Compounds Database + Count-Aware Intelligence
 
-## Two Required Edits (from approval)
+## The Problem
 
-### Edit 1: Deep-clone synthesisInput on every send
+Right now, combining H(2) + O(1) shows "Plausible" and "uncertain" because the raw electronegativity math (delta-EN = 1.24) falls in an ambiguous threshold zone. But every student knows H2O is water. The app needs to **recognize real compounds** and teach learners what they are building -- and what happens when they add or remove an atom.
 
-In `src/pages/Index.tsx`, the `handleSendToSynthesis` callback must deep-clone the slots array so React always sees a new reference and downstream effects fire reliably:
+## The Solution
 
-```
-setSynthesisInput(slots.map(s => ({ ...s })));
-```
-
-This ensures every "Send to Synthesis" click creates fresh `SlotEntry` objects, guaranteeing `useEffect` in `MixtureLab` and `SynthesisPanel` always triggers.
-
-### Edit 2: Count-truth headline in CombineLab
-
-In `src/components/CombineLab/CombineLab.tsx`, when any slot has `count > 1` or there are 3+ filled atoms, the headline formula must always be `formatFormula(slotEntries)` -- not dependent on whether `synthesize()` succeeds or what `prediction.predictedOutcome` says. Classification/confidence badges can still come from `synthesize()`, and `prediction.predictedOutcome` remains as secondary "Bond tendency" text.
+Add a **known compounds lookup table** that maps specific element+count combinations to real-world compound data. When a learner's slots match a known compound, the app shows the compound name, what it is, and why the ratio matters. When the slots are close to a known compound (e.g., H2O2 vs H2O), it highlights the difference.
 
 ---
 
-## Full Changes (approved as written)
+## What Changes
 
-### A. Dev Runtime Debug Panel
+### 1. New data file: `src/data/knownCompounds.ts`
 
-**New file: `src/components/DevDebugPanel.tsx`**
-- Small togglable panel (bottom-right, collapsed by default via "DBG" button)
-- Displays: CombineLab slots, lastSendAction + timestamp, MixtureLab activeTab, curated reactionId, synthesisInput length + formula, SynthesisResult fields, TutorialCanvas isExpanded/sceneType/scrubPhase
+A curated dictionary of ~30-40 common compounds learners should discover:
 
-**`src/pages/Index.tsx`** changes:
-- Add `lastSendAction` state: `{ type: 'curated' | 'synthesis'; ts: number } | null`
-- Set in `handleSendToMixtureLab` (type: 'curated') and `handleSendToSynthesis` (type: 'synthesis')
-- Render `DevDebugPanel` at bottom of page with all relevant state
+```
+H2O  -> "Water" (polar covalent, liquid at room temp)
+H2O2 -> "Hydrogen Peroxide" (polar covalent, unstable oxidizer)
+NaCl -> "Table Salt" (ionic, crystalline solid)
+CO2  -> "Carbon Dioxide" (nonpolar covalent, gas)
+CO   -> "Carbon Monoxide" (polar covalent, toxic gas)
+NaOH -> "Sodium Hydroxide / Lye" (ionic)
+HCl  -> "Hydrochloric Acid" (polar covalent)
+NH3  -> "Ammonia" (polar covalent)
+CH4  -> "Methane" (nonpolar covalent)
+CaCO3-> "Calcium Carbonate / Chalk"
+Fe2O3-> "Iron(III) Oxide / Rust"
+MgO  -> "Magnesium Oxide"
+MgCl2-> "Magnesium Chloride"
+Na2O -> "Sodium Oxide"
+CaO  -> "Calcium Oxide / Quickite"
+...etc
+```
 
-### B. Count-aware headline (Edit 2 detail)
+Each entry includes:
+- Formula key (sorted symbol+count string for lookup)
+- Common name(s)
+- Classification (ionic/covalent/metallic)
+- Confidence: always "likely" for known compounds
+- One-line description of what it is
+- A "did you know" fact for learners
+- Related compounds (e.g., H2O links to H2O2) with a note on what the extra atom changes
 
-**`src/components/CombineLab/CombineLab.tsx`**:
-1. Import `formatFormula` and `synthesize` from `synthesisEngine`
-2. Add prop: `primaryPair: PairAnalysis | null` (from `useAnalysis()` via Index)
-3. Compute `hasMultipleAtoms`: true when any filled slot has `count > 1` OR `slotEntries.length >= 3`
-4. When `hasMultipleAtoms`:
-   - Headline formula = `formatFormula(slotEntries)` (always, unconditionally)
-   - Run `synthesize(slotEntries, primaryPair)` for classification/confidence badges
-   - Show `prediction.predictedOutcome` as secondary "Bond tendency" line
-5. When not `hasMultipleAtoms`: keep current `prediction.predictedOutcome` as headline (existing behavior)
+### 2. New utility: `lookupCompound()` in `src/utils/synthesisEngine.ts`
 
-**`src/pages/Index.tsx`**: Pass `primaryPair={primaryPair}` to `CombineLab`
+- Takes `SlotEntry[]`, generates a canonical key (sorted by Z, e.g., "1:2,8:1")
+- Looks up in the known compounds table
+- Returns match (with name, description, classification, confidence) or null
 
-### C. Send-to-Lab fix (Edit 1 detail)
+### 3. Update `synthesize()` in `synthesisEngine.ts`
 
-**`src/pages/Index.tsx`**:
-- `handleSendToSynthesis`: `setSynthesisInput(slots.map(s => ({ ...s })))` -- deep clone
-- `handleSendToMixtureLab`: also clears `synthesisInput` to null (existing behavior, kept)
-- `handleSendToSynthesis`: also clears `prefillReactionId` to null (existing behavior, kept)
+- Call `lookupCompound()` first
+- If match found: override classification, confidence, and add `compoundName` and `compoundDescription` to the result
+- If no match: fall through to existing EN-based logic (unchanged)
+- Add new fields to `SynthesisResult`: `compoundName: string | null`, `compoundDescription: string | null`, `relatedCompounds: RelatedCompound[] | null`
 
-MixtureLab and SynthesisPanel already have controlled tabs and `useEffect` on `synthesisInput`/`initialSlots`. The deep-clone guarantees new references, so no further changes needed there.
+### 4. Update `CombineLab.tsx` prediction display
 
-### D. Scrubber persistence for Why/How playback
+When a known compound is matched:
+- Show compound name prominently: **"Water (H2O)"** with a green "Known Compound" badge
+- Show description: "A polar covalent molecule essential for life"
+- Show "did you know" fact
+- Show **related compounds panel**: "Add another O to get H2O2 (Hydrogen Peroxide) -- a powerful oxidizer. That one extra oxygen makes it unstable and reactive!"
+- Confidence badge shows "Likely" (green) instead of "Plausible"
 
-**`src/components/TutorialCanvas/SceneControls.tsx`**:
-- Remove `onValueCommit` handler from the scrubber slider (line 78). Currently it resets `scrubPhase` to null on release, which defeats timeline step clicks.
-- Play button behavior: clicking Play sets `scrubPhase: null, paused: false` (clears scrub and resumes). Clicking Pause sets `paused: true` without touching `scrubPhase`.
+When no known compound matches:
+- Keep current behavior (formula + EN-based classification)
 
-This makes the Why/How timeline steps actually stick when clicked (they set `scrubPhase` and `paused: true`), and scrubbing persists until the user explicitly presses Play.
+### 5. Fix the EN threshold (minor)
 
-### Files Changed Summary
+Raise the "polar ionic / highly polar covalent" boundary from 1.2 to 1.5 so that compounds like H-O (delta-EN 1.24) correctly classify as "Polar covalent (Likely)" even when not in the known compounds table. This aligns with standard chemistry textbook thresholds.
+
+---
+
+## Technical Details
+
+### Known Compound Data Structure
+
+```typescript
+interface KnownCompound {
+  key: string;           // canonical: "1:2,8:1"
+  formula: string;       // "H2O"
+  name: string;          // "Water"
+  aliases: string[];     // ["Dihydrogen Monoxide"]
+  classification: SynthesisClassification;
+  description: string;
+  didYouKnow: string;
+  related: { key: string; formula: string; name: string; note: string }[];
+}
+```
+
+### Canonical Key Generation
+
+```typescript
+function compoundKey(slots: SlotEntry[]): string {
+  return [...slots]
+    .filter(s => s.count > 0)
+    .sort((a, b) => a.Z - b.Z)
+    .map(s => `${s.Z}:${s.count}`)
+    .join(',');
+}
+```
+
+### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/DevDebugPanel.tsx` | New -- togglable debug panel |
-| `src/components/CombineLab/CombineLab.tsx` | Add primaryPair prop, count-truth headline via formatFormula, synthesize for classification |
-| `src/pages/Index.tsx` | Deep-clone synthesisInput, track lastSendAction, pass primaryPair to CombineLab, render DevDebugPanel |
-| `src/components/TutorialCanvas/SceneControls.tsx` | Remove onValueCommit from scrubber; Play clears scrubPhase |
+| `src/data/knownCompounds.ts` | New -- curated compound database (~30-40 entries) |
+| `src/utils/synthesisEngine.ts` | Add `lookupCompound()`, extend `SynthesisResult` with compound name/description/related, call lookup in `synthesize()` |
+| `src/utils/interactionPredictor.ts` | Raise EN threshold from 1.2 to 1.5 for polar covalent boundary |
+| `src/components/CombineLab/CombineLab.tsx` | Show compound name, description, did-you-know, and related compounds when matched |
+
+### What Learners Will See
+
+- **H(2) + O(1)**: "Water (H2O)" -- Likely, Polar Covalent. "Add another O to get Hydrogen Peroxide!"
+- **H(2) + O(2)**: "Hydrogen Peroxide (H2O2)" -- Likely, Polar Covalent. "Remove one O to get plain Water."
+- **Na(1) + Cl(1)**: "Table Salt (NaCl)" -- Likely, Ionic.
+- **C(1) + O(2)**: "Carbon Dioxide (CO2)" -- Likely, Nonpolar Covalent. "Remove one O to get Carbon Monoxide -- toxic!"
+- **Fe(2) + O(3)**: "Rust (Fe2O3)" -- Likely, Ionic.
+- **Unknown combo**: Falls back to current EN-based prediction (now with corrected thresholds)
 
