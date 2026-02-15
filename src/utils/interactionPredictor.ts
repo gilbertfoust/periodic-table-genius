@@ -77,7 +77,7 @@ function classifyBond(enDelta: number | null, a: Element, b: Element): { bondTyp
   if (enDelta === null) return { bondType: 'Unknown (EN data missing)', confidence: 'uncertain', interactionType: 'Cannot determine – electronegativity not available' };
 
   if (enDelta >= 1.7) return { bondType: 'Ionic', confidence: 'likely', interactionType: 'Ionic bond (electron transfer)' };
-  if (enDelta >= 1.2) return { bondType: 'Polar ionic / highly polar covalent', confidence: 'plausible', interactionType: 'Ionic or highly polar covalent bond' };
+  if (enDelta >= 1.5) return { bondType: 'Polar ionic / highly polar covalent', confidence: 'plausible', interactionType: 'Ionic or highly polar covalent bond' };
   if (enDelta >= 0.5) return { bondType: 'Polar covalent', confidence: 'likely', interactionType: 'Covalent bond (polar)' };
   return { bondType: 'Nonpolar covalent', confidence: 'likely', interactionType: 'Covalent bond (nonpolar / weakly polar)' };
 }

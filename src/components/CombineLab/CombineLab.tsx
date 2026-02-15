@@ -5,10 +5,11 @@ import { REACTIONS } from '@/data/reactions';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { predictCombination, type Confidence, type CombinePrediction, type PairAnalysis } from '@/utils/interactionPredictor';
 import { formatFormula, synthesize, type SlotEntry } from '@/utils/synthesisEngine';
+import { lookupCompound } from '@/data/knownCompounds';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FlaskConical, Send, X, Plus, Minus, Beaker } from 'lucide-react';
+import { FlaskConical, Send, X, Plus, Minus, Beaker, Sparkles, Lightbulb, ArrowRight } from 'lucide-react';
 
 const CONFIDENCE_STYLES: Record<Confidence, { border: string; text: string; label: string }> = {
   likely:    { border: 'border-emerald-500/40', text: 'text-emerald-400', label: 'Likely' },
@@ -111,6 +112,14 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
     return null;
   }, [hasMultipleAtoms, slotEntries, primaryPair]);
   const headlineFormula = hasMultipleAtoms ? formatFormula(slotEntries) : null;
+
+  // Known compound lookup (always check, even for count=1 pairs)
+  const knownCompound = useMemo(() => {
+    if (slotEntries.length >= 2) {
+      return lookupCompound(slotEntries);
+    }
+    return null;
+  }, [slotEntries]);
 
   // Formula display helper
   const subscript = (n: number) => {
@@ -246,12 +255,52 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
               </Badge>
             </div>
 
-            {headlineFormula ? (
+            {/* Known Compound Match */}
+            {knownCompound && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-base font-bold text-foreground">{knownCompound.name}</span>
+                  <span className="text-sm text-muted-foreground">({knownCompound.formula})</span>
+                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Known Compound
+                  </Badge>
+                </div>
+                <p className="text-xs text-foreground/85 leading-relaxed">{knownCompound.description}</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  <Badge variant="secondary" className="text-[10px]">{knownCompound.classification}</Badge>
+                  <Badge variant="outline" className="text-[10px] text-emerald-400">Likely</Badge>
+                </div>
+                {/* Did You Know */}
+                <div className="border border-amber-500/20 rounded-lg bg-amber-500/5 p-2.5 flex gap-2">
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-200/80 leading-relaxed">{knownCompound.didYouKnow}</p>
+                </div>
+                {/* Related Compounds */}
+                {knownCompound.related.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                      <ArrowRight className="h-3 w-3" /> Related compounds
+                    </div>
+                    {knownCompound.related.map(rel => (
+                      <div key={rel.key} className="border border-primary/15 rounded-lg bg-primary/5 p-2.5">
+                        <span className="text-xs font-semibold text-primary">{rel.name} ({rel.formula})</span>
+                        <p className="text-[11px] text-foreground/70 leading-relaxed mt-0.5">{rel.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Fallback: formula + EN-based prediction when no known compound */}
+            {!knownCompound && headlineFormula && (
               <p className="text-sm font-bold text-foreground">{headlineFormula}</p>
-            ) : (
+            )}
+            {!knownCompound && !headlineFormula && (
               <p className="text-xs text-foreground/88 leading-relaxed">{prediction.predictedOutcome}</p>
             )}
-            {headlineFormula && countAwareResult && (
+            {!knownCompound && headlineFormula && countAwareResult && (
               <div className="flex gap-1.5 flex-wrap">
                 <Badge variant="secondary" className="text-[10px]">{countAwareResult.classification}</Badge>
                 <Badge variant="outline" className={`text-[10px] ${CONFIDENCE_STYLES[countAwareResult.confidence]?.text ?? ''}`}>
@@ -259,11 +308,8 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
                 </Badge>
               </div>
             )}
-            {headlineFormula && prediction.predictedOutcome && (
+            {!knownCompound && headlineFormula && prediction.predictedOutcome && (
               <p className="text-[11px] text-muted-foreground">Bond tendency: {prediction.predictedOutcome}</p>
-            )}
-            {!headlineFormula && (
-              <p className="hidden" />
             )}
 
             <div className="grid grid-cols-2 gap-2">
@@ -273,7 +319,9 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
               </div>
               <div className="border border-border/30 rounded-lg bg-background/20 p-2">
                 <div className="text-[10px] text-muted-foreground mb-0.5">Confidence</div>
-                <div className={`text-xs font-medium ${confidenceStyle.text}`}>{confidenceStyle.label}</div>
+                <div className={`text-xs font-medium ${knownCompound ? 'text-emerald-400' : confidenceStyle.text}`}>
+                  {knownCompound ? 'Likely' : confidenceStyle.label}
+                </div>
               </div>
             </div>
 
