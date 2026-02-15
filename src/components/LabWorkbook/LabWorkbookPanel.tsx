@@ -13,12 +13,13 @@ import { LabStep } from './LabStep';
 interface LabWorkbookPanelProps {
   labId: string;
   onClose: () => void;
-  sceneReady: boolean; // isExpanded && currentScene matches
+  sceneType: string; // current scene type from TutorialCanvas
+  isExpanded: boolean;
   level: LearningLevel;
   primaryPair: PairAnalysis | null;
 }
 
-export function LabWorkbookPanel({ labId, onClose, sceneReady, level, primaryPair }: LabWorkbookPanelProps) {
+export function LabWorkbookPanel({ labId, onClose, sceneType, isExpanded, level, primaryPair }: LabWorkbookPanelProps) {
   const lab = useMemo(() => LAB_DEFINITIONS.find(l => l.id === labId), [labId]);
   const { getProgress, submitAnswer, completeLab, resetLab } = useLabProgressStore();
   const progress = getProgress(labId);
@@ -102,7 +103,11 @@ export function LabWorkbookPanel({ labId, onClose, sceneReady, level, primaryPai
               isActive={i === currentStep}
               isCompleted={i < currentStep}
               isLocked={i > currentStep}
-              sceneReady={sceneReady}
+              sceneReady={
+                step.type === 'observe3D' && step.requiredScene
+                  ? isExpanded && sceneType === step.requiredScene
+                  : isExpanded && sceneType !== 'none'
+              }
               level={level}
               onSubmit={handleSubmit}
               feedback={getFeedback(i)}

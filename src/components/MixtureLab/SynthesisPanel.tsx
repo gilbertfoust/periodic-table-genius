@@ -1,9 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { byZ } from '@/data/elements';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { synthesize, formatFormula, type SlotEntry, type SynthesisResult } from '@/utils/synthesisEngine';
 import type { PairAnalysis } from '@/utils/interactionPredictor';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus, Minus, Eye } from 'lucide-react';
@@ -25,14 +24,15 @@ interface SynthesisPanelProps {
   initialSlots?: SlotEntry[];
   primaryPair: PairAnalysis | null;
   onViewIn3D?: (zs: number[]) => void;
+  onSynthesisResult?: (result: SynthesisResult | null) => void;
 }
 
-export function SynthesisPanel({ initialSlots, primaryPair, onViewIn3D }: SynthesisPanelProps) {
+export function SynthesisPanel({ initialSlots, primaryPair, onViewIn3D, onSynthesisResult }: SynthesisPanelProps) {
   const [slots, setSlots] = useState<SlotEntry[]>(initialSlots ?? []);
   const [result, setResult] = useState<SynthesisResult | null>(null);
 
-  // Sync initialSlots when they change
-  useMemo(() => {
+  // Sync initialSlots when they change (fix: useEffect instead of useMemo with side effects)
+  useEffect(() => {
     if (initialSlots && initialSlots.length > 0) {
       setSlots(initialSlots);
       setResult(null);
@@ -51,7 +51,9 @@ export function SynthesisPanel({ initialSlots, primaryPair, onViewIn3D }: Synthe
 
   const handleSynthesize = () => {
     if (slots.length < 2) return;
-    setResult(synthesize(slots, primaryPair));
+    const r = synthesize(slots, primaryPair);
+    setResult(r);
+    onSynthesisResult?.(r);
   };
 
   const formula = formatFormula(slots);

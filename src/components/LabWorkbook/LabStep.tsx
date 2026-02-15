@@ -11,7 +11,7 @@ interface LabStepProps {
   isActive: boolean;
   isCompleted: boolean;
   isLocked: boolean;
-  sceneReady: boolean; // for observe3D gating
+  sceneReady: boolean; // isExpanded && sceneType matches requiredScene
   level: LearningLevel;
   onSubmit: (stepIndex: number, answer: string) => void;
   feedback: string | null;

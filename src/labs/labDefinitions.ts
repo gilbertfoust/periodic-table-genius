@@ -12,7 +12,7 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     ],
     steps: [
       { type: 'predict', prompt: 'Before running the 3D model, what bond type do you expect between Na and Cl?', options: ['Ionic', 'Covalent', 'Metallic', 'Uncertain'] },
-      { type: 'observe3D', prompt: 'Run the bond formation animation. What happens to the valence electron?' },
+      { type: 'observe3D', prompt: 'Run the bond formation animation. What happens to the valence electron?', requiredScene: 'bond' },
       { type: 'record', prompt: 'Record the electron counts before and after bonding for Na and Cl.' },
       { type: 'explain', prompt: 'Why does sodium lose an electron while chlorine gains one?' },
       { type: 'reflect', prompt: 'How would this differ for Fe + O?' },
@@ -31,7 +31,7 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     ],
     steps: [
       { type: 'predict', prompt: 'What type of bond do you expect between C and O?', options: ['Ionic', 'Polar covalent', 'Nonpolar covalent', 'Uncertain'] },
-      { type: 'observe3D', prompt: 'Watch the electron sharing animation. Notice the electron cloud.' },
+      { type: 'observe3D', prompt: 'Watch the electron sharing animation. Notice the electron cloud.', requiredScene: 'bond' },
       { type: 'record', prompt: 'Note the EN delta and dipole direction from the 3D view.' },
       { type: 'explain', prompt: 'Why do C and O share electrons rather than transfer them?' },
       { type: 'reflect', prompt: 'Compare this to Na + Cl. What changes when EN difference is larger?' },
@@ -50,7 +50,7 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     ],
     steps: [
       { type: 'predict', prompt: 'What bond type do you predict for Fe + O?', options: ['Ionic', 'Covalent', 'Uncertain', 'Metallic'] },
-      { type: 'observe3D', prompt: 'Notice the assumptions warning in the 3D view. What does it say?' },
+      { type: 'observe3D', prompt: 'Notice the assumptions warning in the 3D view. What does it say?', requiredScene: 'bond' },
       { type: 'record', prompt: 'List the uncertainty flags shown for this pair.' },
       { type: 'explain', prompt: 'Why is the bond type hard to predict for iron?' },
       { type: 'reflect', prompt: 'What additional information would help make a more confident prediction?' },
@@ -69,7 +69,7 @@ export const LAB_DEFINITIONS: LabDefinition[] = [
     ],
     steps: [
       { type: 'predict', prompt: 'What will happen when Ag⁺ meets Cl⁻ in solution?', options: ['White precipitate forms', 'Gas is released', 'Nothing happens', 'Solution turns blue'] },
-      { type: 'observe3D', prompt: 'Watch the lattice form in the 3D view. Describe the repeating pattern.' },
+      { type: 'observe3D', prompt: 'Watch the lattice form in the 3D view. Describe the repeating pattern.', requiredScene: 'lattice' },
       { type: 'record', prompt: 'Describe the 3D structure you see — alternating ions forming a crystal.' },
       { type: 'explain', prompt: 'Why does AgCl precipitate while NaCl stays in solution?' },
       { type: 'reflect', prompt: 'Name another salt that is insoluble in water.' },

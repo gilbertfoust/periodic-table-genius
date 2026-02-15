@@ -33,6 +33,7 @@ function IndexContent() {
 
   const handleSendToMixtureLab = useCallback((reactionId: string) => {
     setPrefillReactionId(reactionId);
+    setSynthesisInput(null); // clear synthesis when using curated
     setTimeout(() => {
       document.getElementById('mixture-lab')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -40,6 +41,7 @@ function IndexContent() {
 
   const handleSendToSynthesis = useCallback((slots: SlotEntry[]) => {
     setSynthesisInput(slots);
+    setPrefillReactionId(null); // clear curated when using synthesis
     setTimeout(() => {
       document.getElementById('mixture-lab')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -52,7 +54,6 @@ function IndexContent() {
   }, [handleSendToMixtureLab]);
 
   const handleViewIn3D = useCallback((zs: number[]) => {
-    // This is triggered by Synthesis "View in 3D" — just scrolls to 3D view
     // Does NOT auto-advance workbook steps (per revision)
     document.querySelector('[data-tutorial-canvas]')?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -68,14 +69,6 @@ function IndexContent() {
     showLattice && combinePrediction ? combinePrediction.elements : [],
     [showLattice, combinePrediction]
   );
-
-  // Scene readiness for lab workbook observe3D gating
-  const labSceneReady = useMemo(() => {
-    if (!sceneControls.isExpanded) return false;
-    if (!activeLabId) return false;
-    // Check if the current scene matches what the lab needs
-    return sceneControls.sceneType !== 'none';
-  }, [sceneControls.isExpanded, sceneControls.sceneType, activeLabId]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,6 +91,7 @@ function IndexContent() {
               showLattice={showLattice}
               latticeElements={latticeElements}
               primaryPair={primaryPair}
+              synthesisResult={synthesisResult}
               onSceneStateChange={setSceneControls}
             />
             <ExplainerPanel
@@ -111,7 +105,8 @@ function IndexContent() {
               <LabWorkbookPanel
                 labId={activeLabId}
                 onClose={() => setActiveLabId(null)}
-                sceneReady={labSceneReady}
+                sceneType={sceneControls.sceneType}
+                isExpanded={sceneControls.isExpanded}
                 level={sceneControls.level}
                 primaryPair={primaryPair}
               />
@@ -131,6 +126,7 @@ function IndexContent() {
             synthesisInput={synthesisInput}
             primaryPair={primaryPair}
             onViewIn3D={handleViewIn3D}
+            onSynthesisResult={setSynthesisResult}
           />
         </div>
 
