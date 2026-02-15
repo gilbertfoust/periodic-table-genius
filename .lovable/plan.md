@@ -1,104 +1,75 @@
 
 
-# Step 4: 3D Tutorial Module (Revised)
+# Step 8.1 Hotfix: Fix 3 Live UI Bugs + Dev Debug Panel
 
-## Revisions Applied
+## Two Required Edits (from approval)
 
-Two changes from the approved plan:
+### Edit 1: Deep-clone synthesisInput on every send
 
-1. **BondFormationScene receives `PairAnalysis` via props** -- it does NOT call `analyzePair` or recompute EN thresholds. The parent (`TutorialCanvas`) runs the analysis and passes the result down. When `bondConfidence === 'uncertain'`, the scene shows a caution caption and avoids implying a single outcome (e.g., shows both ionic and covalent possibilities side-by-side with a "?" overlay).
+In `src/pages/Index.tsx`, the `handleSendToSynthesis` callback must deep-clone the slots array so React always sees a new reference and downstream effects fire reliably:
 
-2. **LatticeScene trigger is deterministic** -- it activates only when:
-   - `prediction.reactionType === 'Ionic compound formation'` AND the matched curated reaction's `visuals.kind === 'precip'`, OR
-   - The CombineLab's `matchedReactionId` resolves to a `REACTIONS` entry whose `visuals.kind === 'precip'`
-   
-   No string `.includes()` matching. A boolean `showLattice` prop is computed in `Index.tsx` using strict equality checks.
+```
+setSynthesisInput(slots.map(s => ({ ...s })));
+```
+
+This ensures every "Send to Synthesis" click creates fresh `SlotEntry` objects, guaranteeing `useEffect` in `MixtureLab` and `SynthesisPanel` always triggers.
+
+### Edit 2: Count-truth headline in CombineLab
+
+In `src/components/CombineLab/CombineLab.tsx`, when any slot has `count > 1` or there are 3+ filled atoms, the headline formula must always be `formatFormula(slotEntries)` -- not dependent on whether `synthesize()` succeeds or what `prediction.predictedOutcome` says. Classification/confidence badges can still come from `synthesize()`, and `prediction.predictedOutcome` remains as secondary "Bond tendency" text.
 
 ---
 
-## Dependencies
+## Full Changes (approved as written)
 
-Install: `three@^0.160.0`, `@react-three/fiber@^8.18.0`, `@react-three/drei@^9.122.0`
+### A. Dev Runtime Debug Panel
 
-## New Files (5)
+**New file: `src/components/DevDebugPanel.tsx`**
+- Small togglable panel (bottom-right, collapsed by default via "DBG" button)
+- Displays: CombineLab slots, lastSendAction + timestamp, MixtureLab activeTab, curated reactionId, synthesisInput length + formula, SynthesisResult fields, TutorialCanvas isExpanded/sceneType/scrubPhase
 
-### 1. `src/components/TutorialCanvas/WebGLErrorBoundary.tsx`
-- React class component error boundary
-- Catches WebGL/Three.js errors
-- Renders fallback card: "3D view is not available. The tutorial content is still accessible in the Element Tutor panel above."
+**`src/pages/Index.tsx`** changes:
+- Add `lastSendAction` state: `{ type: 'curated' | 'synthesis'; ts: number } | null`
+- Set in `handleSendToMixtureLab` (type: 'curated') and `handleSendToSynthesis` (type: 'synthesis')
+- Render `DevDebugPanel` at bottom of page with all relevant state
 
-### 2. `src/components/TutorialCanvas/TutorialCanvas.tsx`
-- Wraps everything in a shadcn `Collapsible` with a toggle button labeled "3D View"
-- Fixed-height container (280px)
-- Contains `<Canvas>` from fiber with `dpr={[1, 1.5]}`, `frameloop="demand"` when collapsed
-- `Suspense` fallback with loading text
-- `WebGLErrorBoundary` wrapping the Canvas
-- Props: `showLattice: boolean`, `latticeElements: Element[]` (the two ions for the lattice)
-- Scene switching logic:
-  - `showLattice === true` --> `LatticeScene` (with `latticeElements`)
-  - `selectedElements.length === 0` --> placeholder text
-  - `selectedElements.length === 1` --> `AtomStructureScene`
-  - `selectedElements.length >= 2` --> `BondFormationScene`
-- For BondFormationScene: calls `analyzePair(elA, elB)` here in the parent and passes the resulting `PairAnalysis` as a prop
-- Caption `<p>` rendered below the canvas (plain HTML, not inside Three.js), populated by each scene's caption logic
+### B. Count-aware headline (Edit 2 detail)
 
-### 3. `src/scenes/AtomStructureScene.tsx`
-- Reads element from props (first selected element passed by TutorialCanvas)
-- Nucleus as central `<Sphere>` with proton count label via drei `<Html>`
-- Concentric `<Torus>` rings for shells (count = element's period)
-- Small spheres orbiting each ring as electrons; valence shell electrons colored emerald, inner shells blue
-- Simplified 2-8-8-18 shell filling model
-- `useFrame` for orbit animation
-- Exports `getAtomCaption(element)` returning: "Atom model of {Name} (Z={Z}) showing {N} electron shells. The {V} valence electrons (green) determine bonding behavior."
+**`src/components/CombineLab/CombineLab.tsx`**:
+1. Import `formatFormula` and `synthesize` from `synthesisEngine`
+2. Add prop: `primaryPair: PairAnalysis | null` (from `useAnalysis()` via Index)
+3. Compute `hasMultipleAtoms`: true when any filled slot has `count > 1` OR `slotEntries.length >= 3`
+4. When `hasMultipleAtoms`:
+   - Headline formula = `formatFormula(slotEntries)` (always, unconditionally)
+   - Run `synthesize(slotEntries, primaryPair)` for classification/confidence badges
+   - Show `prediction.predictedOutcome` as secondary "Bond tendency" line
+5. When not `hasMultipleAtoms`: keep current `prediction.predictedOutcome` as headline (existing behavior)
 
-### 4. `src/scenes/BondFormationScene.tsx`
-- Props: `analysis: PairAnalysis` (the full pair analysis result -- bondType, bondConfidence, enDelta, uncertaintyFlags, ionA, ionB)
-- **Does NOT compute EN delta or bond type** -- reads entirely from the `analysis` prop
-- Visualization branches on `analysis.bondType`:
-  - `'Ionic'`: Animates electron sphere detaching from low-EN atom, transferring to high-EN atom; atoms resize to show ion formation
-  - `'Nonpolar covalent'` or `'Polar covalent'`: Two atoms approach, overlapping translucent electron-sharing clouds merge
-  - `'Metallic / alloy'`: Two metallic spheres with shared electron sea (translucent cloud around both)
-  - `'No typical bond'`: Static display with label
-- **Uncertain handling**: When `analysis.bondConfidence === 'uncertain'`, the scene shows both possible outcomes faded/ghosted with a "?" label in the center, and the caption includes a caution note
-- `useFrame` + `useRef` for smooth lerp animations
-- Exports `getBondCaption(analysis)`:
-  - Normal: "Bond formation between {A} and {B}: {bondType} ({enDeltaLabel}). {interactionType}."
-  - Uncertain: "Caution: The interaction between {A} and {B} is uncertain ({enDeltaLabel}). Multiple outcomes are possible depending on conditions. {uncertaintyFlags joined}"
+**`src/pages/Index.tsx`**: Pass `primaryPair={primaryPair}` to `CombineLab`
 
-### 5. `src/scenes/LatticeScene.tsx`
-- Props: `elements: Element[]` (the two ions)
-- 3x3x3 alternating grid of cation/anion spheres, colored by category
-- Animated build: spheres appear one-by-one with stagger delay via `useFrame` + time tracking
-- drei `<OrbitControls>` with `enableDamping` for rotation/zoom
-- Exports `getLatticeCaption(elements)`: "Crystal lattice of {A}-{B} -- ions arrange in a repeating 3D pattern. This structure forms when oppositely charged ions are attracted to each other."
+### C. Send-to-Lab fix (Edit 1 detail)
 
-## Modified Files (2)
+**`src/pages/Index.tsx`**:
+- `handleSendToSynthesis`: `setSynthesisInput(slots.map(s => ({ ...s })))` -- deep clone
+- `handleSendToMixtureLab`: also clears `synthesisInput` to null (existing behavior, kept)
+- `handleSendToSynthesis`: also clears `prefillReactionId` to null (existing behavior, kept)
 
-### `src/components/CombineLab/CombineLab.tsx`
-- Add optional prop: `onPredictionChange?: (prediction: CombinePrediction | null) => void`
-- Add a `useEffect` that calls `onPredictionChange` whenever `prediction` changes
-- No other changes
+MixtureLab and SynthesisPanel already have controlled tabs and `useEffect` on `synthesisInput`/`initialSlots`. The deep-clone guarantees new references, so no further changes needed there.
 
-### `src/pages/Index.tsx`
-- Import `TutorialCanvas`, `CombinePrediction`, and `REACTIONS`
-- Add state: `const [combinePrediction, setCombinePrediction] = useState<CombinePrediction | null>(null)`
-- Compute `showLattice` deterministically:
-  ```
-  const showLattice = combinePrediction !== null
-    && combinePrediction.matchedReactionId !== null
-    && REACTIONS.find(r => r.id === combinePrediction.matchedReactionId)?.visuals.kind === 'precip';
-  ```
-- Compute `latticeElements` from `combinePrediction.elements` when `showLattice` is true
-- Pass `onPredictionChange={setCombinePrediction}` to `CombineLab`
-- Place `<TutorialCanvas showLattice={showLattice} latticeElements={latticeElements} />` in the right column between `ElementTutor` and `InteractionInspector`
+### D. Scrubber persistence for Why/How playback
 
-## Verification Plan
+**`src/components/TutorialCanvas/SceneControls.tsx`**:
+- Remove `onValueCommit` handler from the scrubber slider (line 78). Currently it resets `scrubPhase` to null on release, which defeats timeline step clicks.
+- Play button behavior: clicking Play sets `scrubPhase: null, paused: false` (clears scrub and resumes). Clicking Pause sets `paused: true` without touching `scrubPhase`.
 
-1. Click Oxygen (Z=8) -- AtomStructureScene: 2 shells, 6 green valence electrons, caption mentions "6 valence electrons"
-2. Shift-click Na + Cl -- BondFormationScene receives `PairAnalysis` with `bondType: 'Ionic'`, shows electron transfer animation, caption: "Ionic bond (delta-EN = 2.23)"
-3. Shift-click C + O -- BondFormationScene receives `bondType: 'Polar covalent'`, shows sharing animation, caption: "Covalent bond (delta-EN = 0.89)"
-4. Shift-click Fe + Cu (both transition metals) -- `bondConfidence: 'plausible'` or `'uncertain'`, scene shows caution state
-5. In CombineLab, assign Ag + Cl -- `matchedReactionId: 'precip_agcl'` -- `REACTIONS.find(...).visuals.kind === 'precip'` is true -- LatticeScene triggers with deterministic check
-6. In CombineLab, assign Na + Cl with `matchedReactionId: 'neutralization'` -- `visuals.kind === 'heat'` -- LatticeScene does NOT trigger
-7. Collapse/expand toggle works, no console errors on unmount
+This makes the Why/How timeline steps actually stick when clicked (they set `scrubPhase` and `paused: true`), and scrubbing persists until the user explicitly presses Play.
+
+### Files Changed Summary
+
+| File | Change |
+|------|--------|
+| `src/components/DevDebugPanel.tsx` | New -- togglable debug panel |
+| `src/components/CombineLab/CombineLab.tsx` | Add primaryPair prop, count-truth headline via formatFormula, synthesize for classification |
+| `src/pages/Index.tsx` | Deep-clone synthesisInput, track lastSendAction, pass primaryPair to CombineLab, render DevDebugPanel |
+| `src/components/TutorialCanvas/SceneControls.tsx` | Remove onValueCommit from scrubber; Play clears scrubPhase |
 
