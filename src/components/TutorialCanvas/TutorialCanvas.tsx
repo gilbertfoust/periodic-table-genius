@@ -12,6 +12,7 @@ import { WebGLErrorBoundary } from './WebGLErrorBoundary';
 import { AtomStructureScene, getAtomCaption, getAtomAccountingData } from '@/scenes/AtomStructureScene';
 import { BondFormationScene, getBondCaption, getBondAccountingData } from '@/scenes/BondFormationScene';
 import { LatticeScene, getLatticeCaption } from '@/scenes/LatticeScene';
+import { MoleculeScene, getMoleculeCaption } from '@/scenes/MoleculeScene';
 import { SceneControlsUI } from './SceneControls';
 import { LevelNotice } from './LevelNotice';
 import { WhyHowTimeline, buildTimelineSteps } from './WhyHowTimeline';
@@ -55,7 +56,7 @@ export function TutorialCanvas({ showLattice, latticeElements, primaryPair, synt
   const pairAnalysis = primaryPair ?? null;
 
   // Determine scene type
-  type SceneType = 'lattice' | 'bond' | 'atom' | 'none';
+  type SceneType = 'lattice' | 'molecule' | 'bond' | 'atom' | 'none';
   let sceneType: SceneType = 'none';
   let caption = 'Select an element on the periodic table to see its atomic structure.';
   let sceneKey = 'placeholder';
@@ -64,6 +65,10 @@ export function TutorialCanvas({ showLattice, latticeElements, primaryPair, synt
     sceneType = 'lattice';
     caption = getLatticeCaption(latticeElements);
     sceneKey = `lattice-${latticeElements.map(e => e.Z).join('-')}`;
+  } else if (elements.length >= 3) {
+    sceneType = 'molecule';
+    caption = getMoleculeCaption(elements);
+    sceneKey = `molecule-${elements.map(e => e.Z).join('-')}`;
   } else if (elements.length >= 2 && pairAnalysis) {
     sceneType = 'bond';
     caption = getBondCaption(pairAnalysis);
@@ -163,6 +168,8 @@ export function TutorialCanvas({ showLattice, latticeElements, primaryPair, synt
                   <Suspense fallback={null}>
                     {sceneType === 'lattice' && latticeElements.length >= 2 ? (
                       <LatticeScene elements={latticeElements} controls={controls} onResetRef={latticeResetRef} />
+                    ) : sceneType === 'molecule' && elements.length >= 3 ? (
+                      <MoleculeScene elements={elements} controls={controls} />
                     ) : sceneType === 'bond' && pairAnalysis ? (
                       <BondFormationScene analysis={pairAnalysis} controls={controls} />
                     ) : sceneType === 'atom' && elements.length >= 1 ? (

@@ -239,18 +239,18 @@ function ENForceArrow({ progressRef, fromX, toX, color }: {
   progressRef: React.MutableRefObject<number>;
   fromX: number; toX: number; color: string;
 }) {
-  const ref = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
   useFrame(() => {
-    if (!ref.current) return;
+    if (!meshRef.current) return;
     const p = Math.min(progressRef.current, 1);
     const opacity = Math.min(p * 3, 1) * 0.9;
-    (ref.current.material as THREE.MeshStandardMaterial).opacity = opacity;
-    ref.current.visible = p > 0.05;
+    (meshRef.current.material as THREE.MeshStandardMaterial).opacity = opacity;
+    meshRef.current.visible = p > 0.05;
   });
   const midX = (fromX + toX) / 2;
   const dir = toX > fromX ? 1 : -1;
   return (
-    <mesh ref={ref} position={[midX + dir * 0.15, 0.6, 0]} rotation={[0, 0, dir > 0 ? 0.4 : -0.4]} visible={false}>
+    <mesh ref={meshRef} position={[midX + dir * 0.15, 0.6, 0]} rotation={[0, 0, dir > 0 ? 0.4 : -0.4]} visible={false}>
       <coneGeometry args={[0.07, 0.28, 8]} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.8} transparent opacity={0} />
     </mesh>
@@ -429,8 +429,8 @@ function IonicScene({ groupRef, progressRef, colorA, colorB, donorLeft, analysis
       />
 
       {/* Ionic bond arc (connecting line when bonded) */}
-      <mesh ref={bondArcRef} visible={false}>
-        <cylinderGeometry args={[0.025, 0.025, 3.3, 8]} rotation-z={Math.PI / 2} />
+      <mesh ref={bondArcRef} visible={false} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.025, 0.025, 3.3, 8]} />
         <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={1.5} transparent opacity={0} depthWrite={false} />
       </mesh>
 
