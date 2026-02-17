@@ -39,6 +39,12 @@ export function PeriodicTable() {
     selectElement(Z, e.shiftKey || multiSelectMode);
   }, [selectElement, multiSelectMode]);
 
+  // On touch devices, always add to selection (multi-select by default).
+  // This avoids needing Shift key which doesn't exist on mobile.
+  const handleTouchSelect = useCallback((Z: number) => {
+    selectElement(Z, true);
+  }, [selectElement]);
+
   const isDimmed = useCallback((el: typeof ELEMENTS[0]) => {
     return !isElementMatch(el, searchQuery, categoryFocus);
   }, [searchQuery, categoryFocus]);
@@ -73,6 +79,7 @@ export function PeriodicTable() {
                     enMin={enMin}
                     enMax={enMax}
                     onClick={handleClick}
+                    onTouchSelect={handleTouchSelect}
                   />
                 );
               })
@@ -95,6 +102,7 @@ export function PeriodicTable() {
                 enMax={enMax}
                 mini
                 onClick={handleClick}
+                onTouchSelect={handleTouchSelect}
               />
             ))}
           </div>
@@ -115,13 +123,14 @@ export function PeriodicTable() {
                 enMax={enMax}
                 mini
                 onClick={handleClick}
+                onTouchSelect={handleTouchSelect}
               />
             ))}
           </div>
         </div>
 
         <p className="text-xs text-muted-foreground mt-1">
-          Tip: on small screens, scroll the table left and right. Click any element to inspect it. Use the "Add mode" toggle or Shift-click to multi-select (up to 6).
+          Tip: on mobile, tap any element to select it — tap more to add them. On desktop, use the "Add mode" toggle or Shift-click to multi-select (up to 6).
         </p>
       </CardContent>
     </Card>

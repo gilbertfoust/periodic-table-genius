@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import type { Element } from '@/data/elements';
 import type { OverlayMode } from '@/state/selectionStore';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
@@ -13,10 +13,11 @@ interface ElementCellProps {
   enMax: number;
   mini?: boolean;
   onClick: (Z: number, e: React.MouseEvent) => void;
+  onTouchSelect?: (Z: number) => void;
 }
 
 export const ElementCell = memo(function ElementCell({
-  element, overlay, isSelected, isDimmed, enMin, enMax, mini, onClick
+  element, overlay, isSelected, isDimmed, enMin, enMax, mini, onClick, onTouchSelect
 }: ElementCellProps) {
   let bgStyle = 'rgba(255,255,255,0.04)';
 
@@ -35,9 +36,19 @@ export const ElementCell = memo(function ElementCell({
   if (overlay === 'an') overlayTag = `#${element.Z}`;
   if (overlay === 'group') overlayTag = element.group === null ? 'f' : `G${element.group}`;
 
+  // On touch devices, use touchEnd to handle selection and suppress the
+  // subsequent synthetic click to prevent double-firing.
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (onTouchSelect) {
+      e.preventDefault();
+      onTouchSelect(element.Z);
+    }
+  }, [onTouchSelect, element.Z]);
+
   return (
     <button
       onClick={(e) => onClick(element.Z, e)}
+      onTouchEnd={onTouchSelect ? handleTouchEnd : undefined}
       className={`
         relative rounded-xl border text-left transition-all duration-150 cursor-pointer
         hover:-translate-y-0.5 hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring
