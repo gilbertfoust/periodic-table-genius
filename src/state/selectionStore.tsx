@@ -28,7 +28,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
     setSelectedElements(prev => {
       if (multi) {
         if (prev.includes(Z)) return prev.filter(z => z !== Z);
-        if (prev.length >= 6) return prev;
+        if (prev.length >= 4) return prev; // cap at 4 for molecule view
         return [...prev, Z];
       }
       return [Z];

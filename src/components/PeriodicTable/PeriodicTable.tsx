@@ -130,7 +130,7 @@ export function PeriodicTable() {
         </div>
 
         <p className="text-xs text-muted-foreground mt-1">
-          Tip: on mobile, tap any element to select it — tap more to add them. On desktop, use the "Add mode" toggle or Shift-click to multi-select (up to 6).
+          Tip: on mobile, tap any element to add it (up to 4). On desktop, use Shift-click or "Add mode" toggle to multi-select up to 4 elements for molecule view.
         </p>
       </CardContent>
     </Card>
