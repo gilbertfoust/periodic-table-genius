@@ -27,7 +27,11 @@ export function BondFormationScene({ analysis, controls }: Props) {
     if (controls.scrubPhase !== null) {
       progressRef.current = controls.scrubPhase;
     } else if (!controls.paused) {
-      progressRef.current = Math.min(progressRef.current + delta * 0.35 * controls.speed, 1);
+      progressRef.current += delta * 0.35 * controls.speed;
+      // Hold briefly at the bonded state (progress 1.0–1.6), then loop
+      if (progressRef.current > 1.6) {
+        progressRef.current = 0;
+      }
     }
     if (groupRef.current) {
       groupRef.current.rotation.y += (controls.paused && controls.scrubPhase === null ? 0 : delta * 0.12 * controls.speed);
@@ -234,9 +238,8 @@ function IonicScene({ groupRef, progressRef, colorA, colorB, donorLeft, analysis
 
   // After transfer: donor loses valence shell, acceptor gains it
   useFrame(() => {
-    const t = progressRef.current;
+    const t = Math.min(progressRef.current, 1);
     if (leftNucRef.current) {
-      // donor shrinks slightly as it loses valence electron(s)
       const isLeft = donorLeft;
       const scale = isLeft
         ? THREE.MathUtils.lerp(1, 0.82, Math.min(t * 2, 1))
@@ -254,7 +257,8 @@ function IonicScene({ groupRef, progressRef, colorA, colorB, donorLeft, analysis
 
   const donorIon = donorLeft ? analysis.ionA : analysis.ionB;
   const acceptorIon = donorLeft ? analysis.ionB : analysis.ionA;
-  const t = progressRef.current;
+  // Clamp to 1 so hold phase (1.0–1.6) still shows completed bond state
+  const t = Math.min(progressRef.current, 1);
 
   const tooltipForAtom = (which: 'a' | 'b') => {
     const el = which === 'a' ? analysis.a : analysis.b;
@@ -422,8 +426,9 @@ function ValenceRingWithFade({ count, radius, color, speed, progress, fade }: {
 
   useFrame((_, delta) => {
     t.current += delta * speed;
+    const p = Math.min(progress.current, 1);
     const opacity = fade
-      ? Math.max(0, 1 - progress.current * 2.5)
+      ? Math.max(0, 1 - p * 2.5)
       : 1;
     refs.current.forEach((m, i) => {
       if (!m) return;
@@ -459,7 +464,7 @@ function AcceptorGainRing({ count, radius, color, progress, show }: {
   useFrame((_, delta) => {
     if (!show) return;
     t.current += delta * 1.4;
-    const opacity = Math.min(Math.max(progress.current * 2.5 - 1.2, 0), 1);
+    const opacity = Math.min(Math.max(Math.min(progress.current, 1) * 2.5 - 1.2, 0), 1);
     refs.current.forEach((m, i) => {
       if (!m) return;
       const angle = t.current + (i / count) * Math.PI * 2;
@@ -494,7 +499,9 @@ function TransferElectronOffset({ progressRef, fromX, toX, offsetPhase }: {
 
   useFrame(() => {
     if (!ref.current) return;
-    const raw = Math.max(progressRef.current - offsetPhase, 0);
+    // Use modulo to loop: raw progress loops 0→1.6, we use only 0→1 portion
+    const looped = progressRef.current % 1.6;
+    const raw = Math.max(looped - offsetPhase, 0);
     const t = Math.min(raw * 1.6, 1);
     ref.current.position.x = THREE.MathUtils.lerp(fromX, toX, t);
     ref.current.position.y = Math.sin(t * Math.PI) * (0.7 + offsetPhase * 1.5);
@@ -524,7 +531,7 @@ function CovalentScene({ groupRef, progressRef, colorA, colorB, showDipole, anal
   const sharedCount = Math.min(valenceA, valenceB, 4);
 
   useFrame(() => {
-    const t = progressRef.current;
+    const t = Math.min(progressRef.current, 1);
     const dist = THREE.MathUtils.lerp(2.0, 1.05, t);
     if (leftRef.current) leftRef.current.position.x = -dist / 2;
     if (rightRef.current) rightRef.current.position.x = dist / 2;
@@ -657,7 +664,7 @@ function CovalentScene({ groupRef, progressRef, colorA, colorB, showDipole, anal
       {/* Phase label */}
       <Html center position={[0, -1.8, 0]}>
         <span style={{ color: '#94a3b8', fontSize: 10, pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-          {progressRef.current < 0.2 ? 'Atoms approaching…' : progressRef.current < 0.6 ? 'Valence electrons overlapping…' : 'Shared electron cloud formed ✓'}
+          {(() => { const p = Math.min(progressRef.current, 1); return p < 0.2 ? 'Atoms approaching…' : p < 0.6 ? 'Valence electrons overlapping…' : 'Shared electron cloud formed ✓'; })()}
         </span>
       </Html>
     </group>
@@ -676,7 +683,7 @@ function CovalentValenceRing({ count, radius, color, speed, progressRef, side, s
 
   useFrame((_, delta) => {
     t.current += delta * speed;
-    const progress = progressRef.current;
+    const progress = Math.min(progressRef.current, 1);
     const bondingThreshold = 0.4;
 
     refs.current.forEach((m, i) => {
@@ -731,7 +738,7 @@ function SharedBondElectrons({ progressRef, sharedCount }: {
 
   useFrame((_, delta) => {
     t.current += delta * 2.2;
-    const progress = progressRef.current;
+    const progress = Math.min(progressRef.current, 1);
     const opacity = Math.min(Math.max((progress - 0.6) / 0.25, 0), 1);
 
     refs.current.forEach((m, i) => {
