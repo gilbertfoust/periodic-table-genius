@@ -1,5 +1,5 @@
 import { useCallback, type ReactNode } from 'react';
-import { X, Plus, MousePointer, Info } from 'lucide-react';
+import { X, Plus, MousePointer, Info, FlaskConical } from 'lucide-react';
 import { useSelection } from '@/state/selectionStore';
 import { byZ } from '@/data/elements';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
@@ -11,6 +11,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export type DemoKey = 'ionic' | 'covalent' | 'precip' | 'hcl_polar' | 'na_o_ionic' | 'fe_o_uncertain';
 
@@ -28,6 +34,26 @@ const DEMOS: { key: DemoKey; label: string; zs: number[] }[] = [
   { key: 'fe_o_uncertain', label: 'Fe + O → Uncertain', zs: [26, 8] },
 ];
 
+interface MoleculePreset {
+  formula: string;
+  name: string;
+  zs: number[];       // atomic numbers in order (duplicates allowed)
+  color: string;      // accent color for the chip
+}
+
+const MOLECULE_PRESETS: MoleculePreset[] = [
+  { formula: 'H₂O',   name: 'Water',             zs: [1, 1, 8],       color: '#38bdf8' },
+  { formula: 'CO₂',   name: 'Carbon dioxide',     zs: [6, 8, 8],       color: '#a3e635' },
+  { formula: 'NH₃',   name: 'Ammonia',            zs: [7, 1, 1, 1],    color: '#c084fc' },
+  { formula: 'CH₄',   name: 'Methane',            zs: [6, 1, 1, 1],    color: '#fb923c' },
+  { formula: 'H₂O₂',  name: 'Hydrogen peroxide',  zs: [1, 1, 8, 8],    color: '#f472b6' },
+  { formula: 'O₂',    name: 'Oxygen gas',         zs: [8, 8],          color: '#34d399' },
+  { formula: 'N₂',    name: 'Nitrogen gas',       zs: [7, 7],          color: '#818cf8' },
+  { formula: 'NaCl',  name: 'Table salt',         zs: [11, 17],        color: '#fbbf24' },
+  { formula: 'HCl',   name: 'Hydrochloric acid',  zs: [1, 17],         color: '#f87171' },
+  { formula: 'SO₂',   name: 'Sulfur dioxide',     zs: [16, 8, 8],      color: '#facc15' },
+];
+
 export function SelectionTray({ onDemoScenario, children }: SelectionTrayProps) {
   const { selectedElements, removeElement, clearSelection, multiSelectMode, setMultiSelectMode, setSelectedElements } = useSelection();
 
@@ -36,8 +62,56 @@ export function SelectionTray({ onDemoScenario, children }: SelectionTrayProps) 
     onDemoScenario?.(demo.key);
   }, [setSelectedElements, onDemoScenario]);
 
+  const handlePreset = useCallback((preset: MoleculePreset) => {
+    setSelectedElements(preset.zs);
+  }, [setSelectedElements]);
+
+  const activePreset = MOLECULE_PRESETS.find(p =>
+    p.zs.length === selectedElements.length &&
+    [...p.zs].sort().join(',') === [...selectedElements].sort().join(',')
+  );
+
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="space-y-2 mt-3">
+      {/* Molecule Presets */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <FlaskConical className="h-3.5 w-3.5" />
+          <span className="font-medium">Molecule presets</span>
+          <span className="text-foreground/40">— click to explore in 3D</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {MOLECULE_PRESETS.map(preset => {
+            const isActive = activePreset?.formula === preset.formula;
+            return (
+              <Tooltip key={preset.formula}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handlePreset(preset)}
+                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-all hover:scale-105 active:scale-95"
+                    style={{
+                      borderColor: isActive ? preset.color : `${preset.color}50`,
+                      backgroundColor: isActive ? `${preset.color}25` : `${preset.color}10`,
+                      color: isActive ? preset.color : `${preset.color}cc`,
+                      boxShadow: isActive ? `0 0 8px ${preset.color}40` : 'none',
+                    }}
+                    aria-label={`Load ${preset.name}`}
+                    aria-pressed={isActive}
+                  >
+                    {preset.formula}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  <p className="font-semibold">{preset.name}</p>
+                  <p className="text-muted-foreground">{preset.zs.length} atom{preset.zs.length > 1 ? 's' : ''} • click to load</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Multi-select hint banner */}
       <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground/80">
         <Info className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
@@ -115,5 +189,6 @@ export function SelectionTray({ onDemoScenario, children }: SelectionTrayProps) 
       )}
       </div>
     </div>
+    </TooltipProvider>
   );
 }
