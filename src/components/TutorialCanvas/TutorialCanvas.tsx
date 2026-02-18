@@ -4,6 +4,7 @@ import { useSelection } from '@/state/selectionStore';
 import { byZ, type Element } from '@/data/elements';
 import type { PairAnalysis } from '@/utils/interactionPredictor';
 import type { SynthesisResult } from '@/utils/synthesisEngine';
+import { getMoleculeInfo } from '@/utils/moleculeInfo';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,15 @@ const LATTICE_OVERLAYS: OverlayDef[] = [
   { key: 'unitCell', label: 'Unit cell', levelMin: 'intermediate' },
 ];
 
+const BOND_TYPE_COLORS: Record<string, string> = {
+  ionic: 'text-amber-400 border-amber-400/40 bg-amber-400/10',
+  covalent: 'text-sky-400 border-sky-400/40 bg-sky-400/10',
+  'polar covalent': 'text-violet-400 border-violet-400/40 bg-violet-400/10',
+  'nonpolar covalent': 'text-emerald-400 border-emerald-400/40 bg-emerald-400/10',
+  metallic: 'text-orange-400 border-orange-400/40 bg-orange-400/10',
+  uncertain: 'text-muted-foreground border-border bg-muted/30',
+};
+
 export function TutorialCanvas({ showLattice, latticeElements, primaryPair, synthesisResult, onSceneStateChange }: Props) {
   const [open, setOpen] = useState(true);
   const [controls, setControls] = useState<SceneControls>({ ...DEFAULT_CONTROLS, overlays: { valenceHighlight: true, charges: true } });
@@ -54,6 +64,9 @@ export function TutorialCanvas({ showLattice, latticeElements, primaryPair, synt
 
   // Use primaryPair from props (single source of truth) instead of computing locally
   const pairAnalysis = primaryPair ?? null;
+
+  // Molecule info badge (name, bond type, bond angle) — shown for 2+ element scenes
+  const moleculeInfo = useMemo(() => getMoleculeInfo(elements), [elements]);
 
   // Determine scene type
   type SceneType = 'lattice' | 'molecule' | 'bond' | 'atom' | 'none';
@@ -126,6 +139,10 @@ export function TutorialCanvas({ showLattice, latticeElements, primaryPair, synt
     setControls(prev => ({ ...prev, scrubPhase: phase, paused: true }));
   }, []);
 
+  // Bond type badge colors — use known bond type or fall back
+  const bondTypeColorClass =
+    moleculeInfo ? (BOND_TYPE_COLORS[moleculeInfo.bondType] ?? BOND_TYPE_COLORS['uncertain']) : '';
+
   return (
     <Card className="bg-card/80 backdrop-blur border-border" data-tutorial-canvas>
       <Collapsible open={open} onOpenChange={setOpen}>
@@ -180,10 +197,35 @@ export function TutorialCanvas({ showLattice, latticeElements, primaryPair, synt
               </div>
             </WebGLErrorBoundary>
 
+            {/* Molecule info badge */}
+            {moleculeInfo && (sceneType === 'molecule' || sceneType === 'bond') && (
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Name */}
+                <span className="text-sm font-semibold text-foreground">
+                  {moleculeInfo.formula !== moleculeInfo.name
+                    ? <>{moleculeInfo.name} <span className="text-muted-foreground font-normal text-xs">({moleculeInfo.formula})</span></>
+                    : moleculeInfo.formula}
+                </span>
+
+                <span className="text-muted-foreground text-xs">—</span>
+
+                {/* Bond type */}
+                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${bondTypeColorClass}`}>
+                  {moleculeInfo.bondType}
+                </span>
+
+                {/* Bond angle */}
+                {moleculeInfo.bondAngle && moleculeInfo.bondAngle !== '—' && (
+                  <span className="inline-flex items-center rounded-full border border-border/50 bg-muted/40 px-2.5 py-0.5 text-xs font-mono text-foreground/80">
+                    ∠ {moleculeInfo.bondAngle}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Viewpoint shortcuts */}
             {sceneType !== 'none' && (
               <div className="flex gap-1">
-                {/* Note: viewpoint shortcuts change camera via Canvas re-key; OrbitControls handles orbit */}
                 <span className="text-[10px] text-muted-foreground mr-1">Click & drag to orbit</span>
               </div>
             )}
