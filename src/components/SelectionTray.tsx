@@ -42,9 +42,9 @@ export function SelectionTray({ onDemoScenario, children }: SelectionTrayProps) 
       <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-foreground/80">
         <Info className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
         <span>
-          <span className="font-semibold text-foreground">Select up to 4 elements</span> to explore bonds & molecules in 3D.{' '}
-          <span className="hidden sm:inline">On desktop, hold <kbd className="inline-flex items-center rounded border border-border bg-muted px-1 py-0.5 font-mono text-[10px]">Shift</kbd> + click, or turn on <strong>Add mode</strong> below.</span>
-          <span className="sm:hidden">On mobile, simply tap each element to add it.</span>
+          <span className="font-semibold text-foreground">Select up to 4 elements</span> — pick the same element multiple times (e.g. H + H + O + O for H₂O₂).{' '}
+          <span className="hidden sm:inline">Hold <kbd className="inline-flex items-center rounded border border-border bg-muted px-1 py-0.5 font-mono text-[10px]">Shift</kbd> + click to add, or enable <strong>Add mode</strong> below.</span>
+          <span className="sm:hidden">Enable <strong>Add mode</strong> then tap each element to add it.</span>
         </span>
       </div>
 
@@ -83,13 +83,13 @@ export function SelectionTray({ onDemoScenario, children }: SelectionTrayProps) 
       {selectedElements.length > 0 && (
         <>
           <span className="text-xs text-muted-foreground font-medium">Selected:</span>
-          {selectedElements.map(Z => {
+          {selectedElements.map((Z, idx) => {
             const el = byZ(Z);
             if (!el) return null;
             const color = CATEGORY_COLORS[el.category] || '#9aa6c8';
             return (
               <Badge
-                key={Z}
+                key={idx}
                 variant="outline"
                 className="gap-1.5 px-2 py-1 cursor-default"
                 style={{ borderColor: `${color}55`, background: `${color}15` }}

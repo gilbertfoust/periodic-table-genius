@@ -27,16 +27,20 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
   const selectElement = useCallback((Z: number, multi = false) => {
     setSelectedElements(prev => {
       if (multi) {
-        if (prev.includes(Z)) return prev.filter(z => z !== Z);
         if (prev.length >= 4) return prev; // cap at 4 for molecule view
-        return [...prev, Z];
+        return [...prev, Z]; // allow duplicates (e.g. H,H,O,O for H2O2)
       }
       return [Z];
     });
   }, []);
 
+  // Remove only the LAST occurrence of Z so duplicates work correctly
   const removeElement = useCallback((Z: number) => {
-    setSelectedElements(prev => prev.filter(z => z !== Z));
+    setSelectedElements(prev => {
+      const idx = prev.lastIndexOf(Z);
+      if (idx === -1) return prev;
+      return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+    });
   }, []);
 
   const clearSelection = useCallback(() => setSelectedElements([]), []);
