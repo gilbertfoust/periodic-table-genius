@@ -5,11 +5,12 @@
  */
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html, OrbitControls } from '@react-three/drei';
+import { Html, OrbitControls, Line } from '@react-three/drei';
 import type { Element } from '@/data/elements';
 import type { SceneControls } from '@/types/learningLayers';
 import * as THREE from 'three';
 import { getShellElectrons } from './AtomStructureScene';
+import { getMoleculeInfo } from '@/utils/moleculeInfo';
 
 interface Props {
   elements: Element[];
@@ -156,6 +157,66 @@ function AtomElectrons({ element, color }: { element: Element; color: string }) 
   );
 }
 
+// Bond angle arc: draws a dashed arc between two bond directions from the central atom,
+// with a label showing the angle in degrees.
+function BondAngleArc({
+  center, a, b, label,
+}: {
+  center: THREE.Vector3;
+  a: THREE.Vector3;
+  b: THREE.Vector3;
+  label: string;
+}) {
+  const arcPoints = useMemo(() => {
+    const dirA = a.clone().sub(center).normalize();
+    const dirB = b.clone().sub(center).normalize();
+    const r = 0.52; // arc radius
+    const segments = 24;
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const dir = dirA.clone().lerp(dirB, t).normalize();
+      pts.push(center.clone().add(dir.multiplyScalar(r)));
+    }
+    return pts;
+  }, [center, a, b]);
+
+  // Midpoint of arc for label
+  const labelPos = useMemo(() => {
+    const dirA = a.clone().sub(center).normalize();
+    const dirB = b.clone().sub(center).normalize();
+    return center.clone().add(dirA.clone().lerp(dirB, 0.5).normalize().multiplyScalar(0.72));
+  }, [center, a, b]);
+
+  return (
+    <group>
+      <Line
+        points={arcPoints}
+        color="#34d399"
+        lineWidth={1.2}
+        dashed
+        dashSize={0.06}
+        gapSize={0.04}
+        transparent
+        opacity={0.7}
+      />
+      <Html position={labelPos} center distanceFactor={6}>
+        <span style={{
+          color: '#34d399',
+          fontSize: 9,
+          fontWeight: 700,
+          fontFamily: 'monospace',
+          pointerEvents: 'none',
+          textShadow: '0 0 4px #000',
+          whiteSpace: 'nowrap',
+        }}>
+          {label}
+        </span>
+      </Html>
+    </group>
+  );
+}
+
 export function getMoleculeCaption(elements: Element[]): string {
   const formula = elements.map(e => e.sym).join('');
   const names = elements.map(e => e.name).join(', ');
@@ -202,6 +263,11 @@ export function MoleculeScene({ elements, controls }: Props) {
 
   const level = controls.level;
   const formula = elements.map(e => e.sym).join('');
+
+  // Bond angle arc: show if molecule has a known VSEPR angle and ≥3 atoms
+  const moleculeInfo = useMemo(() => getMoleculeInfo(elements), [elements]);
+  const showArc = elements.length >= 3 && bondPairs.length >= 2 &&
+    !!moleculeInfo?.bondAngle && moleculeInfo.bondAngle !== '—';
 
   return (
     <>
@@ -271,6 +337,16 @@ export function MoleculeScene({ elements, controls }: Props) {
             {formula} — {bondPairs.length} bond{bondPairs.length !== 1 ? 's' : ''} forming ⟳
           </div>
         </Html>
+
+        {/* Bond angle arc overlay */}
+        {showArc && (
+          <BondAngleArc
+            center={positions[0]}
+            a={positions[bondPairs[0][1]]}
+            b={positions[bondPairs[1][1]]}
+            label={moleculeInfo!.bondAngle!}
+          />
+        )}
       </group>
     </>
   );
