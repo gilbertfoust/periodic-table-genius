@@ -218,12 +218,12 @@ export function CombineLab({ onSendToMixtureLab, onSendToSynthesis, onPrediction
           <div className="space-y-1.5">
             <div className="text-[11px] text-muted-foreground font-medium">Click to assign:</div>
             <div className="flex flex-wrap gap-1.5">
-              {unassigned.map(el => {
+              {unassigned.map((el, idx) => {
                 const color = CATEGORY_COLORS[el.category] || '#9aa6c8';
                 const firstEmpty = slots.findIndex(s => s.Z === null);
                 return (
                   <button
-                    key={el.Z}
+                    key={`${el.Z}-${idx}`}
                     onClick={() => firstEmpty !== -1 && assignToSlot(firstEmpty, el.Z)}
                     disabled={firstEmpty === -1}
                     className="px-2.5 py-1.5 rounded-lg border border-border/50 bg-secondary/20 hover:bg-secondary/40 transition-colors text-xs font-medium disabled:opacity-30"
