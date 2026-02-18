@@ -1,10 +1,11 @@
-import { useCallback, type ReactNode } from 'react';
-import { X, Plus, MousePointer, Info, FlaskConical } from 'lucide-react';
+import { useCallback, useState, type ReactNode } from 'react';
+import { X, Plus, MousePointer, Info, FlaskConical, Search } from 'lucide-react';
 import { useSelection } from '@/state/selectionStore';
-import { byZ } from '@/data/elements';
+import { byZ, ELEMENTS } from '@/data/elements';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,8 +55,41 @@ const MOLECULE_PRESETS: MoleculePreset[] = [
   { formula: 'SO₂',   name: 'Sulfur dioxide',     zs: [16, 8, 8],      color: '#facc15' },
 ];
 
+/** Parse a formula like "H2O2" or "C6H6" into an array of atomic numbers (capped at 4). */
+function parseFormula(formula: string): number[] | null {
+  const tokens = formula.trim().match(/([A-Z][a-z]?)(\d*)/g);
+  if (!tokens) return null;
+  const zs: number[] = [];
+  for (const token of tokens) {
+    const m = token.match(/^([A-Z][a-z]?)(\d*)$/);
+    if (!m) continue;
+    const [, sym, countStr] = m;
+    const el = ELEMENTS.find(e => e.sym === sym);
+    if (!el) return null; // unknown symbol → invalid
+    const count = countStr ? parseInt(countStr, 10) : 1;
+    for (let i = 0; i < count; i++) zs.push(el.Z);
+  }
+  if (zs.length === 0) return null;
+  return zs.slice(0, 4); // cap at 4
+}
+
 export function SelectionTray({ onDemoScenario, children }: SelectionTrayProps) {
   const { selectedElements, removeElement, clearSelection, multiSelectMode, setMultiSelectMode, setSelectedElements } = useSelection();
+  const [formulaInput, setFormulaInput] = useState('');
+  const [formulaError, setFormulaError] = useState(false);
+
+  const handleFormulaSubmit = useCallback(() => {
+    const zs = parseFormula(formulaInput);
+    if (!zs) { setFormulaError(true); return; }
+    setFormulaError(false);
+    setFormulaInput('');
+    setSelectedElements(zs);
+  }, [formulaInput, setSelectedElements]);
+
+  const handleFormulaKey = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleFormulaSubmit();
+    else if (formulaError) setFormulaError(false);
+  }, [handleFormulaSubmit, formulaError]);
 
   const handleDemo = useCallback((demo: typeof DEMOS[number]) => {
     setSelectedElements(demo.zs);
@@ -70,6 +104,7 @@ export function SelectionTray({ onDemoScenario, children }: SelectionTrayProps) 
     p.zs.length === selectedElements.length &&
     [...p.zs].sort().join(',') === [...selectedElements].sort().join(',')
   );
+
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -110,6 +145,37 @@ export function SelectionTray({ onDemoScenario, children }: SelectionTrayProps) 
             );
           })}
         </div>
+      </div>
+
+      {/* Formula input */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Search className="h-3.5 w-3.5" />
+          <span className="font-medium">Type a formula</span>
+          <span className="text-foreground/40">— e.g. H2O, CH4, NH3, C2H6</span>
+        </div>
+        <div className="flex gap-2">
+          <Input
+            value={formulaInput}
+            onChange={e => { setFormulaInput(e.target.value); setFormulaError(false); }}
+            onKeyDown={handleFormulaKey}
+            placeholder="e.g. H2O2"
+            className={`h-8 text-sm font-mono max-w-[160px] ${formulaError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+            aria-label="Enter a chemical formula"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={handleFormulaSubmit}
+            disabled={!formulaInput.trim()}
+          >
+            Load
+          </Button>
+        </div>
+        {formulaError && (
+          <p className="text-xs text-destructive">Unknown formula — check element symbols and try again.</p>
+        )}
       </div>
 
       {/* Multi-select hint banner */}
