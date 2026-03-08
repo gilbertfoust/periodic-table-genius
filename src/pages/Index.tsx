@@ -30,6 +30,7 @@ function IndexContent() {
   const [synthesisResult, setSynthesisResult] = useState<SynthesisResult | null>(null);
   const [activeLabId, setActiveLabId] = useState<string | null>(null);
   const [lastSendAction, setLastSendAction] = useState<{ type: 'curated' | 'synthesis'; ts: number } | null>(null);
+  const [view3D, setView3D] = useState(true);
   const [sceneControls, setSceneControls] = useState<{ level: LearningLevel; isExpanded: boolean; sceneType: string }>({
     level: 'beginner', isExpanded: true, sceneType: 'none',
   });
