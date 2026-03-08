@@ -102,7 +102,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement }: {
 
       <Stars radius={80} depth={60} count={2500} factor={3} saturation={0.8} fade speed={0.5} />
 
-      {TABLE_POSITIONS.map(({ element, x, y, z }) => (
+      {TABLE_POSITIONS.map(({ element, x, y, z }, i) => (
         <ElementCube
           key={element.Z}
           element={element}
@@ -111,6 +111,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement }: {
           onSelect={handleSelect}
           onHover={onHoverElement}
           overlay={overlay}
+          entranceDelay={i * 0.012}
         />
       ))}
 
