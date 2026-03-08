@@ -102,7 +102,6 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
     onHover?.(null);
     document.body.style.cursor = 'auto';
   }, [onHover]);
-  }, []);
 
   const glowIntensity = isSelected ? 1.0 : hovered ? 0.6 : 0.25;
   const currentHeight = animState.current.heightZ;
