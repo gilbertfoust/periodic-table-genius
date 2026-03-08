@@ -14,6 +14,7 @@ interface Props {
   onSelect: (Z: number, multi: boolean) => void;
   onHover?: (Z: number | null) => void;
   overlay: TableOverlay3D;
+  entranceDelay?: number;
 }
 
 function catColor(category: string): THREE.Color {
@@ -30,9 +31,19 @@ function normalizeEN(en: number | null): number | null {
   return (en - EN_MIN) / (EN_MAX - EN_MIN);
 }
 
-export function ElementCube({ element, position, isSelected, onSelect, onHover, overlay }: Props) {
+export function ElementCube({ element, position, isSelected, onSelect, onHover, overlay, entranceDelay = 0 }: Props) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
+
+  // Random spawn position, computed once
+  const spawnPos = useMemo(() => ({
+    x: (Math.random() - 0.5) * 60,
+    y: (Math.random() - 0.5) * 40 + 15,
+    z: (Math.random() - 0.5) * 40 - 20,
+  }), []);
+
+  const arrivedRef = useRef(false);
+  const elapsedRef = useRef(0);
 
   const color = useMemo(() => catColor(element.category), [element.category]);
   const emissiveColor = useMemo(() => color.clone().multiplyScalar(0.5), [color]);
@@ -41,13 +52,11 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
   const { scaleXZ, heightZ, yOffset } = useMemo(() => {
     if (overlay === 'radius') {
       const t = normalizeRadius(element.Z);
-      // Scale cube width from 0.5 to 1.2 based on atomic radius
       const s = t != null ? 0.5 + t * 0.7 : 0.7;
       return { scaleXZ: s, heightZ: 0.3, yOffset: 0 };
     }
     if (overlay === 'electronegativity') {
       const t = normalizeEN(element.en);
-      // Height from 0.15 to 2.5 based on EN — creates dramatic bar chart
       const h = t != null ? 0.15 + t * 2.35 : 0.15;
       return { scaleXZ: 0.85, heightZ: h, yOffset: h / 2 - 0.15 };
     }
@@ -58,7 +67,6 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
       const h = tEN != null ? 0.15 + tEN * 2.35 : 0.15;
       return { scaleXZ: s, heightZ: h, yOffset: h / 2 - 0.15 };
     }
-    // 'none' — flat uniform cubes
     return { scaleXZ: 1, heightZ: 0.3, yOffset: 0 };
   }, [overlay, element.Z, element.en]);
 
@@ -69,20 +77,39 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+
+    elapsedRef.current += delta;
+    const t_entrance = Math.max(0, Math.min(1, (elapsedRef.current - entranceDelay) / 1.2));
+    // Smooth ease-out cubic
+    const ease = 1 - Math.pow(1 - t_entrance, 3);
+
     const lerp = Math.min(delta * 5, 1);
     const a = animState.current;
-    const t = targetRef.current;
-    a.scaleXZ += (t.scaleXZ - a.scaleXZ) * lerp;
-    a.heightZ += (t.heightZ - a.heightZ) * lerp;
-    a.yOffset += (t.yOffset - a.yOffset) * lerp;
+    const tgt = targetRef.current;
+    a.scaleXZ += (tgt.scaleXZ - a.scaleXZ) * lerp;
+    a.heightZ += (tgt.heightZ - a.heightZ) * lerp;
+    a.yOffset += (tgt.yOffset - a.yOffset) * lerp;
 
     const hoverLift = hovered ? 0.25 : 0;
     const selectScale = isSelected ? 1.08 : hovered ? 1.04 : 1;
 
-    groupRef.current.position.x = position[0];
-    groupRef.current.position.y += ((position[1] + a.yOffset + hoverLift) - groupRef.current.position.y) * lerp;
-    groupRef.current.position.z = position[2];
-    groupRef.current.scale.set(a.scaleXZ * selectScale, selectScale, a.scaleXZ * selectScale);
+    // Interpolate from spawn to final position
+    const finalX = position[0];
+    const finalY = position[1] + a.yOffset + hoverLift;
+    const finalZ = position[2];
+
+    groupRef.current.position.x = spawnPos.x + (finalX - spawnPos.x) * ease;
+    groupRef.current.position.y = spawnPos.y + (finalY - spawnPos.y) * ease;
+    groupRef.current.position.z = spawnPos.z + (finalZ - spawnPos.z) * ease;
+
+    const entranceScale = 0.01 + ease * 0.99;
+    groupRef.current.scale.set(
+      a.scaleXZ * selectScale * entranceScale,
+      selectScale * entranceScale,
+      a.scaleXZ * selectScale * entranceScale
+    );
+
+    if (t_entrance >= 1) arrivedRef.current = true;
   });
 
   const handleClick = useCallback((e: any) => {
