@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text, RoundedBox } from '@react-three/drei';
+import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Element } from '@/data/elements';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
@@ -12,32 +12,30 @@ interface Props {
   onSelect: (Z: number, multi: boolean) => void;
 }
 
-// Parse hex to THREE.Color
 function catColor(category: string): THREE.Color {
   const hex = CATEGORY_COLORS[category] ?? '#9aa6c8';
   return new THREE.Color(hex);
 }
 
 export function ElementCube({ element, position, isSelected, onSelect }: Props) {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
 
   const color = useMemo(() => catColor(element.category), [element.category]);
-  const emissiveColor = useMemo(() => color.clone().multiplyScalar(0.4), [color]);
+  const emissiveColor = useMemo(() => color.clone().multiplyScalar(0.5), [color]);
 
-  // Animate hover lift + pulse for selected
   useFrame((_, delta) => {
-    if (!meshRef.current) return;
-    const targetY = position[1] + (hovered ? 0.15 : 0);
-    const targetScale = isSelected ? 1.08 : hovered ? 1.04 : 1;
-    meshRef.current.position.y += (targetY - meshRef.current.position.y) * Math.min(delta * 8, 1);
-    const s = meshRef.current.scale.x + (targetScale - meshRef.current.scale.x) * Math.min(delta * 8, 1);
-    meshRef.current.scale.set(s, s, s);
+    if (!groupRef.current) return;
+    const targetY = position[1] + (hovered ? 0.2 : 0);
+    const targetScale = isSelected ? 1.1 : hovered ? 1.06 : 1;
+    groupRef.current.position.y += (targetY - groupRef.current.position.y) * Math.min(delta * 8, 1);
+    const s = groupRef.current.scale.x + (targetScale - groupRef.current.scale.x) * Math.min(delta * 8, 1);
+    groupRef.current.scale.set(s, s, s);
   });
 
   const handleClick = useCallback((e: any) => {
     e.stopPropagation();
-    onSelect(element.Z, e.shiftKey ?? false);
+    onSelect(element.Z, e.nativeEvent?.shiftKey ?? false);
   }, [element.Z, onSelect]);
 
   const handlePointerOver = useCallback((e: any) => {
@@ -51,71 +49,72 @@ export function ElementCube({ element, position, isSelected, onSelect }: Props) 
     document.body.style.cursor = 'auto';
   }, []);
 
-  const glowIntensity = isSelected ? 0.8 : hovered ? 0.5 : 0.2;
+  const glowIntensity = isSelected ? 1.0 : hovered ? 0.6 : 0.25;
 
   return (
-    <mesh
-      ref={meshRef}
+    <group
+      ref={groupRef}
       position={[position[0], position[1], position[2]]}
       onClick={handleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
-      <RoundedBox args={[1.05, 1.05, 0.35]} radius={0.08} smoothness={4}>
+      {/* Main cube */}
+      <mesh>
+        <boxGeometry args={[1.05, 1.05, 0.3]} />
         <meshStandardMaterial
           color={color}
           emissive={emissiveColor}
           emissiveIntensity={glowIntensity}
-          metalness={0.3}
-          roughness={0.4}
+          metalness={0.2}
+          roughness={0.5}
           transparent
-          opacity={hovered || isSelected ? 0.95 : 0.8}
+          opacity={hovered || isSelected ? 0.95 : 0.75}
         />
-      </RoundedBox>
+      </mesh>
 
       {/* Atomic number */}
       <Text
-        position={[-0.32, 0.32, 0.2]}
-        fontSize={0.16}
+        position={[-0.35, 0.35, 0.17]}
+        fontSize={0.17}
         color="white"
         anchorX="left"
         anchorY="top"
-        font="/fonts/inter-medium.woff"
       >
         {String(element.Z)}
       </Text>
 
       {/* Symbol */}
       <Text
-        position={[0, -0.02, 0.2]}
-        fontSize={0.36}
+        position={[0, 0, 0.17]}
+        fontSize={0.38}
         color="white"
         anchorX="center"
         anchorY="middle"
-        fontWeight={700}
+        fontWeight="bold"
       >
         {element.sym}
       </Text>
 
-      {/* Name (truncated for small cubes) */}
+      {/* Name */}
       <Text
-        position={[0, -0.34, 0.2]}
-        fontSize={0.11}
-        color="rgba(255,255,255,0.7)"
+        position={[0, -0.35, 0.17]}
+        fontSize={0.1}
+        color="rgba(255,255,255,0.65)"
         anchorX="center"
         anchorY="middle"
         maxWidth={0.95}
       >
-        {element.name}
+        {element.name.length > 10 ? element.name.slice(0, 9) + '…' : element.name}
       </Text>
 
-      {/* Selection ring */}
+      {/* Selection glow ring */}
       {isSelected && (
-        <mesh position={[0, 0, 0.19]}>
-          <ringGeometry args={[0.52, 0.58, 32]} />
-          <meshBasicMaterial color="#66f0a6" transparent opacity={0.7} side={THREE.DoubleSide} />
+        <mesh position={[0, 0, 0.17]}>
+          <ringGeometry args={[0.54, 0.6, 4]} />
+          <meshBasicMaterial color="#66f0a6" transparent opacity={0.8} side={THREE.DoubleSide} />
         </mesh>
       )}
-    </mesh>
+    </group>
   );
 }
