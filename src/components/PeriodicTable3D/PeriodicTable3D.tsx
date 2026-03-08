@@ -113,6 +113,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
           isSelected={selectedSet.has(element.Z)}
           onSelect={handleSelect}
           onHover={onHoverElement}
+          onDoubleClick={onDoubleClickElement}
           overlay={overlay}
           entranceDelay={i * 0.012}
         />
