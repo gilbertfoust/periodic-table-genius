@@ -200,8 +200,10 @@ function FlyToSearch({ onFlyTo }: { onFlyTo: (Z: number) => void }) {
 export function PeriodicTable3D() {
   const [overlay, setOverlay] = useState<TableOverlay3D>('none');
   const [flyToZ, setFlyToZ] = useState<number | null>(null);
-  // Use a counter to re-trigger fly even to same element
   const [flyKey, setFlyKey] = useState(0);
+  const [hoveredZ, setHoveredZ] = useState<number | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
   const { selectElement } = useSelection();
 
   const handleFlyTo = useCallback((Z: number) => {
@@ -210,21 +212,37 @@ export function PeriodicTable3D() {
     selectElement(Z, false);
   }, [selectElement]);
 
-  const handleFlyArrived = useCallback(() => {
-    // Camera arrived — nothing extra needed
+  const handleFlyArrived = useCallback(() => {}, []);
+
+  const handleHoverElement = useCallback((Z: number | null) => {
+    setHoveredZ(Z);
   }, []);
 
-  const handleResetView = useCallback(() => {
-    setFlyToZ(null);
-    // Trigger a fly back to overview — we'll use Z=0 as sentinel
-    // Actually just reload the camera by setting flyToZ to null
-    // The OrbitControls will handle free navigation
+  // Track mouse position relative to container
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   }, []);
+
+  // Get hovered element data
+  const hoveredElement = hoveredZ ? ELEMENT_BY_Z.get(hoveredZ) : null;
+  const hoveredDetail = hoveredZ ? ELEMENT_DETAILS[hoveredZ] : null;
+  const hoveredRadius = hoveredZ ? ATOMIC_RADII[hoveredZ] : null;
+  const hoveredCatColor = hoveredElement ? (CATEGORY_COLORS[hoveredElement.category] ?? '#9aa6c8') : null;
+
+  // State emoji
+  const stateEmoji = hoveredDetail?.state === 'gas' ? '💨' : hoveredDetail?.state === 'liquid' ? '💧' : hoveredDetail?.state === 'solid' ? '�ite' : '❓';
+  const stateLabel = hoveredDetail?.state ?? 'unknown';
 
   return (
     <WebGLErrorBoundary>
-      <div className="relative w-full rounded-2xl overflow-hidden border border-border/40 bg-background/60 backdrop-blur"
-           style={{ height: 'calc(100vh - 180px)', minHeight: '500px' }}>
+      <div
+        ref={containerRef}
+        className="relative w-full rounded-2xl overflow-hidden border border-border/40 bg-background/60 backdrop-blur"
+        style={{ height: 'calc(100vh - 180px)', minHeight: '500px' }}
+        onMouseMove={handleMouseMove}
+      >
         {/* Floating title + search */}
         <div className="absolute top-4 left-4 z-10 w-56">
           <h1 className="text-2xl font-black tracking-tight text-foreground drop-shadow-lg pointer-events-none">
@@ -252,6 +270,59 @@ export function PeriodicTable3D() {
             </Button>
           ))}
         </div>
+
+        {/* Hover Tooltip */}
+        {hoveredElement && hoveredDetail && (
+          <div
+            className="absolute z-20 pointer-events-none animate-fade-in"
+            style={{
+              left: mousePos.x + 16,
+              top: mousePos.y - 8,
+              maxWidth: 260,
+            }}
+          >
+            <div className="bg-card/95 backdrop-blur-xl border border-border/60 rounded-xl shadow-2xl px-3.5 py-3 space-y-1.5">
+              {/* Header */}
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black text-white shadow-inner"
+                  style={{ backgroundColor: hoveredCatColor ?? '#666' }}
+                >
+                  {hoveredElement.sym}
+                </span>
+                <div>
+                  <div className="text-sm font-bold text-foreground leading-tight">{hoveredElement.name}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    #{hoveredElement.Z} · {hoveredElement.category} · {stateLabel}
+                  </div>
+                </div>
+              </div>
+
+              {/* Data grid */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
+                <div className="text-muted-foreground">Mass</div>
+                <div className="text-foreground font-mono">{hoveredDetail.mass} u</div>
+
+                <div className="text-muted-foreground">Electronegativity</div>
+                <div className="text-foreground font-mono">{hoveredElement.en ?? '—'}</div>
+
+                <div className="text-muted-foreground">Atomic radius</div>
+                <div className="text-foreground font-mono">{hoveredRadius != null ? `${hoveredRadius} pm` : '—'}</div>
+
+                <div className="text-muted-foreground">Group · Period</div>
+                <div className="text-foreground font-mono">
+                  {hoveredElement.group ?? 'f-block'} · {hoveredElement.period}
+                </div>
+              </div>
+
+              {/* Electron config */}
+              <div className="pt-1 border-t border-border/30">
+                <div className="text-[10px] text-muted-foreground mb-0.5">Electron configuration</div>
+                <div className="text-[11px] text-foreground font-mono leading-snug">{hoveredDetail.electronConfig}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Legend overlay */}
         <div className="absolute bottom-4 left-4 z-10 flex flex-wrap gap-1.5 pointer-events-none max-w-[70%]">
@@ -299,7 +370,7 @@ export function PeriodicTable3D() {
           gl={{ antialias: true, alpha: true }}
         >
           <Suspense fallback={null}>
-            <TableScene overlay={overlay} flyToZ={flyToZ} onFlyArrived={handleFlyArrived} />
+            <TableScene overlay={overlay} flyToZ={flyToZ} onFlyArrived={handleFlyArrived} onHoverElement={handleHoverElement} />
           </Suspense>
         </Canvas>
       </div>
