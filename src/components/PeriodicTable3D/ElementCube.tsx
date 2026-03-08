@@ -118,6 +118,11 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
     onSelect(element.Z, e.nativeEvent?.shiftKey ?? false);
   }, [element.Z, onSelect]);
 
+  const handleDoubleClick = useCallback((e: any) => {
+    e.stopPropagation();
+    onDoubleClick?.(element.Z);
+  }, [element.Z, onDoubleClick]);
+
   const handlePointerOver = useCallback((e: any) => {
     e.stopPropagation();
     setHovered(true);
