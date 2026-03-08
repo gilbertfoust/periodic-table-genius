@@ -14,6 +14,7 @@ interface Props {
   onSelect: (Z: number, multi: boolean) => void;
   onHover?: (Z: number | null) => void;
   overlay: TableOverlay3D;
+  entranceDelay?: number;
 }
 
 function catColor(category: string): THREE.Color {
