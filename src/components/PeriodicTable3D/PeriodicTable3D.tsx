@@ -79,7 +79,12 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
   );
 }
 
-function TableScene({ overlay, flyToZ, onFlyArrived }: { overlay: TableOverlay3D; flyToZ: number | null; onFlyArrived: () => void }) {
+function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement }: {
+  overlay: TableOverlay3D;
+  flyToZ: number | null;
+  onFlyArrived: () => void;
+  onHoverElement: (Z: number | null) => void;
+}) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
   const handleSelect = useCallback((Z: number, shiftKey: boolean) => {
@@ -104,6 +109,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived }: { overlay: TableOverlay3D
           position={[x, y, z]}
           isSelected={selectedSet.has(element.Z)}
           onSelect={handleSelect}
+          onHover={onHoverElement}
           overlay={overlay}
         />
       ))}
