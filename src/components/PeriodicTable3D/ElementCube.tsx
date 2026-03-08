@@ -84,14 +84,13 @@ export function ElementCube({ element, position, isSelected, onSelect }: Props) 
         {String(element.Z)}
       </Text>
 
-      {/* Symbol */}
+      {/* Symbol - larger and bold-looking */}
       <Text
         position={[0, 0, 0.17]}
         fontSize={0.38}
         color="white"
         anchorX="center"
         anchorY="middle"
-        fontWeight="bold"
       >
         {element.sym}
       </Text>
