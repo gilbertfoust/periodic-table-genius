@@ -93,12 +93,15 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
   const handlePointerOver = useCallback((e: any) => {
     e.stopPropagation();
     setHovered(true);
+    onHover?.(element.Z);
     document.body.style.cursor = 'pointer';
-  }, []);
+  }, [element.Z, onHover]);
 
   const handlePointerOut = useCallback(() => {
     setHovered(false);
+    onHover?.(null);
     document.body.style.cursor = 'auto';
+  }, [onHover]);
   }, []);
 
   const glowIntensity = isSelected ? 1.0 : hovered ? 0.6 : 0.25;
