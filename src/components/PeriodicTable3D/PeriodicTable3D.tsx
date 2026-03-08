@@ -234,6 +234,11 @@ export function PeriodicTable3D() {
     setHoveredZ(Z);
   }, []);
 
+  const [detailZ, setDetailZ] = useState<number | null>(null);
+  const handleDoubleClickElement = useCallback((Z: number) => {
+    setDetailZ(Z);
+  }, []);
+
   // Track mouse position relative to container
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!containerRef.current) return;
