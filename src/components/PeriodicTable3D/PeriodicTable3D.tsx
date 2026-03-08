@@ -15,13 +15,16 @@ import { Layers, Circle, Zap, Combine, Search, X, Thermometer, Weight, Activity 
 import { ElementComparison } from './ElementComparison';
 import { ElementDetailModal } from './ElementDetailModal';
 
-export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both';
+export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both' | 'meltingPoint' | 'density' | 'ionizationEnergy';
 
 const OVERLAY_OPTIONS: { value: TableOverlay3D; label: string; icon: typeof Layers; description: string }[] = [
   { value: 'none', label: 'Flat', icon: Layers, description: 'Uniform cubes' },
   { value: 'radius', label: 'Radius', icon: Circle, description: 'Size = atomic radius' },
   { value: 'electronegativity', label: 'EN', icon: Zap, description: 'Height = electronegativity' },
   { value: 'both', label: 'Both', icon: Combine, description: 'Size + height combined' },
+  { value: 'meltingPoint', label: 'Melting Pt', icon: Thermometer, description: 'Height = melting point' },
+  { value: 'density', label: 'Density', icon: Weight, description: 'Height = density' },
+  { value: 'ionizationEnergy', label: 'Ion. Energy', icon: Activity, description: 'Height = 1st ionization energy' },
 ];
 
 // Pre-build lookup: Z → position
