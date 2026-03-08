@@ -359,6 +359,30 @@ export function PeriodicTable3D() {
                 {label}
               </span>
             ))
+          ) : overlay === 'meltingPoint' ? (
+            <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm rounded-full px-3 py-1 border border-border/30">
+              <span className="text-[10px] text-foreground/80">Cold</span>
+              <div className="w-24 h-2 rounded-full" style={{
+                background: 'linear-gradient(90deg, hsl(210,90%,50%), hsl(60,90%,50%), hsl(15,95%,50%), hsl(0,90%,40%))'
+              }} />
+              <span className="text-[10px] text-foreground/80">Hot</span>
+            </div>
+          ) : overlay === 'density' ? (
+            <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm rounded-full px-3 py-1 border border-border/30">
+              <span className="text-[10px] text-foreground/80">Light</span>
+              <div className="w-24 h-2 rounded-full" style={{
+                background: 'linear-gradient(90deg, hsl(180,70%,60%), hsl(260,70%,45%), hsl(300,80%,35%))'
+              }} />
+              <span className="text-[10px] text-foreground/80">Dense</span>
+            </div>
+          ) : overlay === 'ionizationEnergy' ? (
+            <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm rounded-full px-3 py-1 border border-border/30">
+              <span className="text-[10px] text-foreground/80">Easy to ionize</span>
+              <div className="w-24 h-2 rounded-full" style={{
+                background: 'linear-gradient(90deg, hsl(120,60%,40%), hsl(60,80%,50%), hsl(30,90%,50%), hsl(0,80%,45%))'
+              }} />
+              <span className="text-[10px] text-foreground/80">Hard to ionize</span>
+            </div>
           ) : (
             <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm rounded-full px-3 py-1 border border-border/30">
               <span className="text-[10px] text-foreground/80">Low EN</span>
