@@ -12,6 +12,7 @@ import { ElementCube } from './ElementCube';
 import { WebGLErrorBoundary } from '@/components/TutorialCanvas/WebGLErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { Layers, Circle, Zap, Combine, Search, X } from 'lucide-react';
+import { ElementComparison } from './ElementComparison';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both';
 
@@ -205,7 +206,18 @@ export function PeriodicTable3D() {
   const [hoveredZ, setHoveredZ] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const { selectElement } = useSelection();
+  const { selectedElements, selectElement } = useSelection();
+  const [showCompare, setShowCompare] = useState(false);
+
+  // Auto-show comparison when exactly 2 unique elements selected
+  const comparePair = useMemo(() => {
+    const unique = [...new Set(selectedElements)];
+    return unique.length === 2 ? unique as [number, number] : null;
+  }, [selectedElements]);
+
+  useEffect(() => {
+    if (comparePair) setShowCompare(true);
+  }, [comparePair]);
 
   const handleFlyTo = useCallback((Z: number) => {
     setFlyToZ(Z);
@@ -358,9 +370,14 @@ export function PeriodicTable3D() {
           )}
         </div>
 
+        {/* Element Comparison panel */}
+        {showCompare && comparePair && (
+          <ElementComparison zPair={comparePair} onClose={() => setShowCompare(false)} />
+        )}
+
         {/* Keyboard hint */}
         <div className="absolute bottom-4 right-4 z-10 text-[10px] text-muted-foreground/60 pointer-events-none">
-          Shift+Click to multi-select (up to 4)
+          Shift+Click to multi-select &amp; compare
         </div>
 
         <Canvas
