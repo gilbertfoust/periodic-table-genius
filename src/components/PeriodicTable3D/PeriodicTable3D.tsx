@@ -231,8 +231,6 @@ export function PeriodicTable3D() {
   const hoveredRadius = hoveredZ ? ATOMIC_RADII[hoveredZ] : null;
   const hoveredCatColor = hoveredElement ? (CATEGORY_COLORS[hoveredElement.category] ?? '#9aa6c8') : null;
 
-  // State emoji
-  const stateEmoji = hoveredDetail?.state === 'gas' ? '💨' : hoveredDetail?.state === 'liquid' ? '💧' : hoveredDetail?.state === 'solid' ? '�ite' : '❓';
   const stateLabel = hoveredDetail?.state ?? 'unknown';
 
   return (
