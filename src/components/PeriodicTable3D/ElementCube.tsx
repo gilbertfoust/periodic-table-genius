@@ -12,6 +12,7 @@ interface Props {
   position: [number, number, number];
   isSelected: boolean;
   onSelect: (Z: number, multi: boolean) => void;
+  onHover?: (Z: number | null) => void;
   overlay: TableOverlay3D;
 }
 
@@ -29,7 +30,7 @@ function normalizeEN(en: number | null): number | null {
   return (en - EN_MIN) / (EN_MAX - EN_MIN);
 }
 
-export function ElementCube({ element, position, isSelected, onSelect, overlay }: Props) {
+export function ElementCube({ element, position, isSelected, onSelect, onHover, overlay }: Props) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
 
@@ -92,13 +93,15 @@ export function ElementCube({ element, position, isSelected, onSelect, overlay }
   const handlePointerOver = useCallback((e: any) => {
     e.stopPropagation();
     setHovered(true);
+    onHover?.(element.Z);
     document.body.style.cursor = 'pointer';
-  }, []);
+  }, [element.Z, onHover]);
 
   const handlePointerOut = useCallback(() => {
     setHovered(false);
+    onHover?.(null);
     document.body.style.cursor = 'auto';
-  }, []);
+  }, [onHover]);
 
   const glowIntensity = isSelected ? 1.0 : hovered ? 0.6 : 0.25;
   const currentHeight = animState.current.heightZ;
