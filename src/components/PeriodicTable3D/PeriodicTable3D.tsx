@@ -13,6 +13,7 @@ import { WebGLErrorBoundary } from '@/components/TutorialCanvas/WebGLErrorBounda
 import { Button } from '@/components/ui/button';
 import { Layers, Circle, Zap, Combine, Search, X } from 'lucide-react';
 import { ElementComparison } from './ElementComparison';
+import { ElementDetailModal } from './ElementDetailModal';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both';
 
