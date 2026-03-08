@@ -31,9 +31,19 @@ function normalizeEN(en: number | null): number | null {
   return (en - EN_MIN) / (EN_MAX - EN_MIN);
 }
 
-export function ElementCube({ element, position, isSelected, onSelect, onHover, overlay }: Props) {
+export function ElementCube({ element, position, isSelected, onSelect, onHover, overlay, entranceDelay = 0 }: Props) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
+
+  // Random spawn position, computed once
+  const spawnPos = useMemo(() => ({
+    x: (Math.random() - 0.5) * 60,
+    y: (Math.random() - 0.5) * 40 + 15,
+    z: (Math.random() - 0.5) * 40 - 20,
+  }), []);
+
+  const arrivedRef = useRef(false);
+  const elapsedRef = useRef(0);
 
   const color = useMemo(() => catColor(element.category), [element.category]);
   const emissiveColor = useMemo(() => color.clone().multiplyScalar(0.5), [color]);
@@ -42,13 +52,11 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
   const { scaleXZ, heightZ, yOffset } = useMemo(() => {
     if (overlay === 'radius') {
       const t = normalizeRadius(element.Z);
-      // Scale cube width from 0.5 to 1.2 based on atomic radius
       const s = t != null ? 0.5 + t * 0.7 : 0.7;
       return { scaleXZ: s, heightZ: 0.3, yOffset: 0 };
     }
     if (overlay === 'electronegativity') {
       const t = normalizeEN(element.en);
-      // Height from 0.15 to 2.5 based on EN — creates dramatic bar chart
       const h = t != null ? 0.15 + t * 2.35 : 0.15;
       return { scaleXZ: 0.85, heightZ: h, yOffset: h / 2 - 0.15 };
     }
@@ -59,7 +67,6 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
       const h = tEN != null ? 0.15 + tEN * 2.35 : 0.15;
       return { scaleXZ: s, heightZ: h, yOffset: h / 2 - 0.15 };
     }
-    // 'none' — flat uniform cubes
     return { scaleXZ: 1, heightZ: 0.3, yOffset: 0 };
   }, [overlay, element.Z, element.en]);
 
