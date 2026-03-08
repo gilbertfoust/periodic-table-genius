@@ -206,7 +206,18 @@ export function PeriodicTable3D() {
   const [hoveredZ, setHoveredZ] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const { selectElement } = useSelection();
+  const { selectedElements, selectElement } = useSelection();
+  const [showCompare, setShowCompare] = useState(false);
+
+  // Auto-show comparison when exactly 2 unique elements selected
+  const comparePair = useMemo(() => {
+    const unique = [...new Set(selectedElements)];
+    return unique.length === 2 ? unique as [number, number] : null;
+  }, [selectedElements]);
+
+  useEffect(() => {
+    if (comparePair) setShowCompare(true);
+  }, [comparePair]);
 
   const handleFlyTo = useCallback((Z: number) => {
     setFlyToZ(Z);
