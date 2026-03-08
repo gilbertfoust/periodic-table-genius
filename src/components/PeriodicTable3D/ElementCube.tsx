@@ -13,6 +13,7 @@ interface Props {
   isSelected: boolean;
   onSelect: (Z: number, multi: boolean) => void;
   onHover?: (Z: number | null) => void;
+  onDoubleClick?: (Z: number) => void;
   overlay: TableOverlay3D;
   entranceDelay?: number;
 }
@@ -31,7 +32,7 @@ function normalizeEN(en: number | null): number | null {
   return (en - EN_MIN) / (EN_MAX - EN_MIN);
 }
 
-export function ElementCube({ element, position, isSelected, onSelect, onHover, overlay, entranceDelay = 0 }: Props) {
+export function ElementCube({ element, position, isSelected, onSelect, onHover, onDoubleClick, overlay, entranceDelay = 0 }: Props) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
 
@@ -117,6 +118,11 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
     onSelect(element.Z, e.nativeEvent?.shiftKey ?? false);
   }, [element.Z, onSelect]);
 
+  const handleDoubleClick = useCallback((e: any) => {
+    e.stopPropagation();
+    onDoubleClick?.(element.Z);
+  }, [element.Z, onDoubleClick]);
+
   const handlePointerOver = useCallback((e: any) => {
     e.stopPropagation();
     setHovered(true);
@@ -154,6 +160,7 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
       ref={groupRef}
       position={[position[0], position[1], position[2]]}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >

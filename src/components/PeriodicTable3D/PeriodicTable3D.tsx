@@ -13,6 +13,7 @@ import { WebGLErrorBoundary } from '@/components/TutorialCanvas/WebGLErrorBounda
 import { Button } from '@/components/ui/button';
 import { Layers, Circle, Zap, Combine, Search, X } from 'lucide-react';
 import { ElementComparison } from './ElementComparison';
+import { ElementDetailModal } from './ElementDetailModal';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both';
 
@@ -80,11 +81,12 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
   );
 }
 
-function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement }: {
+function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleClickElement }: {
   overlay: TableOverlay3D;
   flyToZ: number | null;
   onFlyArrived: () => void;
   onHoverElement: (Z: number | null) => void;
+  onDoubleClickElement: (Z: number) => void;
 }) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
@@ -111,6 +113,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement }: {
           isSelected={selectedSet.has(element.Z)}
           onSelect={handleSelect}
           onHover={onHoverElement}
+          onDoubleClick={onDoubleClickElement}
           overlay={overlay}
           entranceDelay={i * 0.012}
         />
@@ -229,6 +232,11 @@ export function PeriodicTable3D() {
 
   const handleHoverElement = useCallback((Z: number | null) => {
     setHoveredZ(Z);
+  }, []);
+
+  const [detailZ, setDetailZ] = useState<number | null>(null);
+  const handleDoubleClickElement = useCallback((Z: number) => {
+    setDetailZ(Z);
   }, []);
 
   // Track mouse position relative to container
@@ -386,10 +394,15 @@ export function PeriodicTable3D() {
           gl={{ antialias: true, alpha: true }}
         >
           <Suspense fallback={null}>
-            <TableScene overlay={overlay} flyToZ={flyToZ} onFlyArrived={handleFlyArrived} onHoverElement={handleHoverElement} />
+            <TableScene overlay={overlay} flyToZ={flyToZ} onFlyArrived={handleFlyArrived} onHoverElement={handleHoverElement} onDoubleClickElement={handleDoubleClickElement} />
           </Suspense>
         </Canvas>
       </div>
+
+      {/* Element Detail Modal (outside the 3D container so it overlays everything) */}
+      {detailZ != null && (
+        <ElementDetailModal Z={detailZ} onClose={() => setDetailZ(null)} />
+      )}
     </WebGLErrorBoundary>
   );
 }
