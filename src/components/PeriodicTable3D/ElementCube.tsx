@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { Element } from '@/data/elements';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { normalizeRadius } from '@/data/atomicRadii';
+import { normalizeProperty } from '@/data/elementProperties';
 import type { TableOverlay3D } from './PeriodicTable3D';
 
 interface Props {
@@ -67,6 +68,11 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
       const s = tR != null ? 0.5 + tR * 0.7 : 0.7;
       const h = tEN != null ? 0.15 + tEN * 2.35 : 0.15;
       return { scaleXZ: s, heightZ: h, yOffset: h / 2 - 0.15 };
+    }
+    if (overlay === 'meltingPoint' || overlay === 'density' || overlay === 'ionizationEnergy') {
+      const t = normalizeProperty(element.Z, overlay);
+      const h = t != null ? 0.15 + t * 2.35 : 0.15;
+      return { scaleXZ: 0.85, heightZ: h, yOffset: h / 2 - 0.15 };
     }
     return { scaleXZ: 1, heightZ: 0.3, yOffset: 0 };
   }, [overlay, element.Z, element.en]);
@@ -139,19 +145,45 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
   const glowIntensity = isSelected ? 1.0 : hovered ? 0.6 : 0.25;
   const currentHeight = animState.current.heightZ;
 
-  // Color tint for EN overlay — hotter = more electronegative
+  // Color tint for heatmap overlays
   const matColor = useMemo(() => {
     if (overlay === 'electronegativity' || overlay === 'both') {
       const t = normalizeEN(element.en);
       if (t != null) {
-        // Gradient: cool blue → hot magenta/red
         const c = new THREE.Color();
         c.setHSL(0.7 - t * 0.7, 0.85, 0.45 + t * 0.15);
         return c;
       }
     }
+    if (overlay === 'meltingPoint') {
+      const t = normalizeProperty(element.Z, 'meltingPoint');
+      if (t != null) {
+        const c = new THREE.Color();
+        // Blue → yellow → orange → deep red
+        c.setHSL(0.58 - t * 0.58, 0.9, 0.45 + t * 0.1);
+        return c;
+      }
+    }
+    if (overlay === 'density') {
+      const t = normalizeProperty(element.Z, 'density');
+      if (t != null) {
+        const c = new THREE.Color();
+        // Cyan → purple → magenta
+        c.setHSL(0.5 - t * 0.28, 0.7 + t * 0.15, 0.55 - t * 0.15);
+        return c;
+      }
+    }
+    if (overlay === 'ionizationEnergy') {
+      const t = normalizeProperty(element.Z, 'ionizationEnergy');
+      if (t != null) {
+        const c = new THREE.Color();
+        // Green → yellow → orange → red
+        c.setHSL(0.33 - t * 0.33, 0.75 + t * 0.15, 0.4 + t * 0.1);
+        return c;
+      }
+    }
     return color;
-  }, [overlay, element.en, color]);
+  }, [overlay, element.en, element.Z, color]);
 
   const matEmissive = useMemo(() => matColor.clone().multiplyScalar(0.5), [matColor]);
 
