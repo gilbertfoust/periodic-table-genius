@@ -13,6 +13,7 @@ interface Props {
   isSelected: boolean;
   onSelect: (Z: number, multi: boolean) => void;
   onHover?: (Z: number | null) => void;
+  onDoubleClick?: (Z: number) => void;
   overlay: TableOverlay3D;
   entranceDelay?: number;
 }
