@@ -160,6 +160,7 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
       ref={groupRef}
       position={[position[0], position[1], position[2]]}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
