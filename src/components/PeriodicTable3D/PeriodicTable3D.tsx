@@ -370,9 +370,14 @@ export function PeriodicTable3D() {
           )}
         </div>
 
+        {/* Element Comparison panel */}
+        {showCompare && comparePair && (
+          <ElementComparison zPair={comparePair} onClose={() => setShowCompare(false)} />
+        )}
+
         {/* Keyboard hint */}
         <div className="absolute bottom-4 right-4 z-10 text-[10px] text-muted-foreground/60 pointer-events-none">
-          Shift+Click to multi-select (up to 4)
+          Shift+Click to multi-select &amp; compare
         </div>
 
         <Canvas
