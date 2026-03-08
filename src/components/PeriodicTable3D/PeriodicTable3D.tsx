@@ -12,6 +12,7 @@ import { ElementCube } from './ElementCube';
 import { WebGLErrorBoundary } from '@/components/TutorialCanvas/WebGLErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { Layers, Circle, Zap, Combine, Search, X } from 'lucide-react';
+import { ElementComparison } from './ElementComparison';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both';
 
