@@ -398,6 +398,11 @@ export function PeriodicTable3D() {
           </Suspense>
         </Canvas>
       </div>
+
+      {/* Element Detail Modal (outside the 3D container so it overlays everything) */}
+      {detailZ != null && (
+        <ElementDetailModal Z={detailZ} onClose={() => setDetailZ(null)} />
+      )}
     </WebGLErrorBoundary>
   );
 }
