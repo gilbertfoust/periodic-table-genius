@@ -1,12 +1,14 @@
-import { Suspense, useCallback, useMemo, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useCallback, useMemo, useState, useRef, useEffect } from 'react';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
+import * as THREE from 'three';
 import { useSelection } from '@/state/selectionStore';
+import { ELEMENTS } from '@/data/elements';
 import { TABLE_POSITIONS, CAMERA_START, TABLE_CENTER } from './tableLayout';
 import { ElementCube } from './ElementCube';
 import { WebGLErrorBoundary } from '@/components/TutorialCanvas/WebGLErrorBoundary';
 import { Button } from '@/components/ui/button';
-import { Layers, Circle, Zap, Combine } from 'lucide-react';
+import { Layers, Circle, Zap, Combine, Search, X, RotateCcw } from 'lucide-react';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both';
 
@@ -17,7 +19,64 @@ const OVERLAY_OPTIONS: { value: TableOverlay3D; label: string; icon: typeof Laye
   { value: 'both', label: 'Both', icon: Combine, description: 'Size + height combined' },
 ];
 
-function TableScene({ overlay }: { overlay: TableOverlay3D }) {
+// Pre-build lookup: Z → position
+const POSITION_BY_Z = new Map(TABLE_POSITIONS.map(p => [p.element.Z, p]));
+
+/** Smoothly animate camera + controls target to a position */
+function CameraController({ targetZ, onArrived }: { targetZ: number | null; onArrived: () => void }) {
+  const { camera } = useThree();
+  const controlsRef = useRef<any>(null);
+  const flyingRef = useRef(false);
+  const targetPos = useRef(new THREE.Vector3());
+  const targetLook = useRef(new THREE.Vector3());
+
+  useEffect(() => {
+    if (targetZ == null) return;
+    const pos = POSITION_BY_Z.get(targetZ);
+    if (!pos) return;
+
+    // Camera goes in front of the element, slightly above and close
+    targetLook.current.set(pos.x, pos.y, pos.z);
+    targetPos.current.set(pos.x, pos.y + 0.5, pos.z + 5);
+    flyingRef.current = true;
+  }, [targetZ]);
+
+  useFrame((_, delta) => {
+    if (!flyingRef.current) return;
+    const lerp = Math.min(delta * 3, 0.12);
+
+    camera.position.lerp(targetPos.current, lerp);
+
+    if (controlsRef.current) {
+      const ct = controlsRef.current.target as THREE.Vector3;
+      ct.lerp(targetLook.current, lerp);
+      controlsRef.current.update();
+    }
+
+    // Check if arrived
+    if (camera.position.distanceTo(targetPos.current) < 0.05) {
+      flyingRef.current = false;
+      onArrived();
+    }
+  });
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      target={TABLE_CENTER}
+      enableDamping
+      dampingFactor={0.08}
+      minDistance={2}
+      maxDistance={50}
+      enablePan
+      panSpeed={0.5}
+      rotateSpeed={0.5}
+      zoomSpeed={0.8}
+    />
+  );
+}
+
+function TableScene({ overlay, flyToZ, onFlyArrived }: { overlay: TableOverlay3D; flyToZ: number | null; onFlyArrived: () => void }) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
   const handleSelect = useCallback((Z: number, shiftKey: boolean) => {
@@ -46,36 +105,126 @@ function TableScene({ overlay }: { overlay: TableOverlay3D }) {
         />
       ))}
 
-      <OrbitControls
-        target={TABLE_CENTER}
-        enableDamping
-        dampingFactor={0.08}
-        minDistance={5}
-        maxDistance={50}
-        enablePan
-        panSpeed={0.5}
-        rotateSpeed={0.5}
-        zoomSpeed={0.8}
-      />
+      <CameraController targetZ={flyToZ} onArrived={onFlyArrived} />
     </>
+  );
+}
+
+/** Search input with autocomplete dropdown */
+function FlyToSearch({ onFlyTo }: { onFlyTo: (Z: number) => void }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.trim().toLowerCase();
+    return ELEMENTS.filter(el =>
+      el.name.toLowerCase().startsWith(q) ||
+      el.sym.toLowerCase() === q ||
+      String(el.Z) === q
+    ).slice(0, 8);
+  }, [query]);
+
+  const handleSelect = useCallback((Z: number) => {
+    onFlyTo(Z);
+    const el = ELEMENTS.find(e => e.Z === Z);
+    setQuery(el ? `${el.sym} – ${el.name}` : '');
+    setOpen(false);
+    inputRef.current?.blur();
+  }, [onFlyTo]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && results.length > 0) {
+      handleSelect(results[0].Z);
+    }
+    if (e.key === 'Escape') {
+      setOpen(false);
+      inputRef.current?.blur();
+    }
+  }, [results, handleSelect]);
+
+  return (
+    <div className="relative">
+      <div className="relative flex items-center">
+        <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 200)}
+          onKeyDown={handleKeyDown}
+          placeholder="Fly to element…"
+          className="w-full pl-8 pr-8 py-1.5 text-xs rounded-lg border border-border/50 bg-background/80 backdrop-blur-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50"
+        />
+        {query && (
+          <button
+            onClick={() => { setQuery(''); setOpen(false); }}
+            className="absolute right-2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
+      {open && results.length > 0 && (
+        <div className="absolute top-full mt-1 w-full bg-card/95 backdrop-blur-md border border-border/50 rounded-lg shadow-lg overflow-hidden z-20">
+          {results.map(el => (
+            <button
+              key={el.Z}
+              onMouseDown={() => handleSelect(el.Z)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-primary/10 transition-colors"
+            >
+              <span className="font-bold text-foreground w-6">{el.sym}</span>
+              <span className="text-muted-foreground">{el.name}</span>
+              <span className="ml-auto text-muted-foreground/50 text-[10px]">#{el.Z}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
 export function PeriodicTable3D() {
   const [overlay, setOverlay] = useState<TableOverlay3D>('none');
+  const [flyToZ, setFlyToZ] = useState<number | null>(null);
+  // Use a counter to re-trigger fly even to same element
+  const [flyKey, setFlyKey] = useState(0);
+  const { selectElement } = useSelection();
+
+  const handleFlyTo = useCallback((Z: number) => {
+    setFlyToZ(Z);
+    setFlyKey(k => k + 1);
+    selectElement(Z, false);
+  }, [selectElement]);
+
+  const handleFlyArrived = useCallback(() => {
+    // Camera arrived — nothing extra needed
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    setFlyToZ(null);
+    // Trigger a fly back to overview — we'll use Z=0 as sentinel
+    // Actually just reload the camera by setting flyToZ to null
+    // The OrbitControls will handle free navigation
+  }, []);
 
   return (
     <WebGLErrorBoundary>
       <div className="relative w-full rounded-2xl overflow-hidden border border-border/40 bg-background/60 backdrop-blur"
            style={{ height: 'calc(100vh - 180px)', minHeight: '500px' }}>
-        {/* Floating title overlay */}
-        <div className="absolute top-4 left-4 z-10 pointer-events-none">
-          <h1 className="text-2xl font-black tracking-tight text-foreground drop-shadow-lg">
+        {/* Floating title + search */}
+        <div className="absolute top-4 left-4 z-10 w-56">
+          <h1 className="text-2xl font-black tracking-tight text-foreground drop-shadow-lg pointer-events-none">
             Periodic Table <span className="text-primary">Genius</span>
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1 mb-2 pointer-events-none">
             Orbit • Zoom • Click to explore all 118 elements
           </p>
+          <FlyToSearch onFlyTo={handleFlyTo} />
         </div>
 
         {/* 3D Overlay mode toggle */}
@@ -109,7 +258,6 @@ export function PeriodicTable3D() {
               </span>
             ))
           ) : (
-            /* EN gradient legend */
             <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm rounded-full px-3 py-1 border border-border/30">
               <span className="text-[10px] text-foreground/80">Low EN</span>
               <div className="w-24 h-2 rounded-full" style={{
@@ -142,7 +290,7 @@ export function PeriodicTable3D() {
           gl={{ antialias: true, alpha: true }}
         >
           <Suspense fallback={null}>
-            <TableScene overlay={overlay} />
+            <TableScene overlay={overlay} flyToZ={flyToZ} onFlyArrived={handleFlyArrived} />
           </Suspense>
         </Canvas>
       </div>
