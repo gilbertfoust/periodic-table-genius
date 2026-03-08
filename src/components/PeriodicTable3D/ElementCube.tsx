@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { Element } from '@/data/elements';
 import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { normalizeRadius } from '@/data/atomicRadii';
+import { normalizeProperty } from '@/data/elementProperties';
 import type { TableOverlay3D } from './PeriodicTable3D';
 
 interface Props {
