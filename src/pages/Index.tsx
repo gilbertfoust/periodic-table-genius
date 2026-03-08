@@ -5,6 +5,7 @@ import type { SlotEntry } from '@/utils/synthesisEngine';
 import type { DemoKey } from '@/components/SelectionTray';
 import { Header } from '@/components/Header';
 import { PeriodicTable } from '@/components/PeriodicTable/PeriodicTable';
+import { PeriodicTable3D } from '@/components/PeriodicTable3D/PeriodicTable3D';
 import { SelectionTray } from '@/components/SelectionTray';
 import { ElementTutor } from '@/components/ElementTutor/ElementTutor';
 import { InteractionInspector } from '@/components/InteractionInspector/InteractionInspector';
@@ -16,6 +17,8 @@ import { LabLauncher } from '@/components/LabWorkbook/LabLauncher';
 import { LabWorkbookPanel } from '@/components/LabWorkbook/LabWorkbookPanel';
 import { DevDebugPanel } from '@/components/DevDebugPanel';
 import { REACTIONS } from '@/data/reactions';
+import { Button } from '@/components/ui/button';
+import { Box, Grid2X2 } from 'lucide-react';
 import type { CombinePrediction } from '@/utils/interactionPredictor';
 import type { SynthesisResult } from '@/utils/synthesisEngine';
 import type { LearningLevel } from '@/types/learningLayers';
@@ -27,6 +30,7 @@ function IndexContent() {
   const [synthesisResult, setSynthesisResult] = useState<SynthesisResult | null>(null);
   const [activeLabId, setActiveLabId] = useState<string | null>(null);
   const [lastSendAction, setLastSendAction] = useState<{ type: 'curated' | 'synthesis'; ts: number } | null>(null);
+  const [view3D, setView3D] = useState(true);
   const [sceneControls, setSceneControls] = useState<{ level: LearningLevel; isExpanded: boolean; sceneType: string }>({
     level: 'beginner', isExpanded: true, sceneType: 'none',
   });
@@ -79,44 +83,109 @@ function IndexContent() {
       <div className="max-w-[1400px] mx-auto px-4 py-6">
         <Header />
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-4 items-start">
-          <div>
-            <PeriodicTable />
-            <SelectionTray onDemoScenario={handleDemoScenario}>
-              <LabLauncher
-                onLabStart={setActiveLabId}
-                onStartPrecipLab={handleSendToMixtureLab}
-              />
-            </SelectionTray>
-          </div>
-          <div className="space-y-4">
-            <ElementTutor />
-            <TutorialCanvas
-              showLattice={showLattice}
-              latticeElements={latticeElements}
-              primaryPair={primaryPair}
-              synthesisResult={synthesisResult}
-              onSceneStateChange={setSceneControls}
-            />
-            <ExplainerPanel
-              primaryPair={primaryPair}
-              combinePrediction={analysisPrediction}
-              synthesisResult={synthesisResult}
-              level={sceneControls.level}
-            />
-            <InteractionInspector />
-            {activeLabId && (
-              <LabWorkbookPanel
-                labId={activeLabId}
-                onClose={() => setActiveLabId(null)}
-                sceneType={sceneControls.sceneType}
-                isExpanded={sceneControls.isExpanded}
-                level={sceneControls.level}
-                primaryPair={primaryPair}
-              />
-            )}
-          </div>
+        {/* View toggle */}
+        <div className="flex items-center gap-2 mb-3">
+          <Button
+            variant={view3D ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setView3D(true)}
+          >
+            <Box className="h-3.5 w-3.5" /> 3D View
+          </Button>
+          <Button
+            variant={!view3D ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setView3D(false)}
+          >
+            <Grid2X2 className="h-3.5 w-3.5" /> Classic
+          </Button>
         </div>
+
+        {view3D ? (
+          /* 3D Hero View */
+          <>
+            <PeriodicTable3D />
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_0.4fr] gap-4 mt-4 items-start">
+              <div>
+                <SelectionTray onDemoScenario={handleDemoScenario}>
+                  <LabLauncher
+                    onLabStart={setActiveLabId}
+                    onStartPrecipLab={handleSendToMixtureLab}
+                  />
+                </SelectionTray>
+              </div>
+              <div className="space-y-4">
+                <ElementTutor />
+                <TutorialCanvas
+                  showLattice={showLattice}
+                  latticeElements={latticeElements}
+                  primaryPair={primaryPair}
+                  synthesisResult={synthesisResult}
+                  onSceneStateChange={setSceneControls}
+                />
+                <ExplainerPanel
+                  primaryPair={primaryPair}
+                  combinePrediction={analysisPrediction}
+                  synthesisResult={synthesisResult}
+                  level={sceneControls.level}
+                />
+                <InteractionInspector />
+                {activeLabId && (
+                  <LabWorkbookPanel
+                    labId={activeLabId}
+                    onClose={() => setActiveLabId(null)}
+                    sceneType={sceneControls.sceneType}
+                    isExpanded={sceneControls.isExpanded}
+                    level={sceneControls.level}
+                    primaryPair={primaryPair}
+                  />
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Classic 2D View */
+          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-4 items-start">
+            <div>
+              <PeriodicTable />
+              <SelectionTray onDemoScenario={handleDemoScenario}>
+                <LabLauncher
+                  onLabStart={setActiveLabId}
+                  onStartPrecipLab={handleSendToMixtureLab}
+                />
+              </SelectionTray>
+            </div>
+            <div className="space-y-4">
+              <ElementTutor />
+              <TutorialCanvas
+                showLattice={showLattice}
+                latticeElements={latticeElements}
+                primaryPair={primaryPair}
+                synthesisResult={synthesisResult}
+                onSceneStateChange={setSceneControls}
+              />
+              <ExplainerPanel
+                primaryPair={primaryPair}
+                combinePrediction={analysisPrediction}
+                synthesisResult={synthesisResult}
+                level={sceneControls.level}
+              />
+              <InteractionInspector />
+              {activeLabId && (
+                <LabWorkbookPanel
+                  labId={activeLabId}
+                  onClose={() => setActiveLabId(null)}
+                  sceneType={sceneControls.sceneType}
+                  isExpanded={sceneControls.isExpanded}
+                  level={sceneControls.level}
+                  primaryPair={primaryPair}
+                />
+              )}
+            </div>
+          </div>
+        )}
 
         <CombineLab
           onSendToMixtureLab={handleSendToMixtureLab}
