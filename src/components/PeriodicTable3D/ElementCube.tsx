@@ -77,20 +77,39 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+
+    elapsedRef.current += delta;
+    const t_entrance = Math.max(0, Math.min(1, (elapsedRef.current - entranceDelay) / 1.2));
+    // Smooth ease-out cubic
+    const ease = 1 - Math.pow(1 - t_entrance, 3);
+
     const lerp = Math.min(delta * 5, 1);
     const a = animState.current;
-    const t = targetRef.current;
-    a.scaleXZ += (t.scaleXZ - a.scaleXZ) * lerp;
-    a.heightZ += (t.heightZ - a.heightZ) * lerp;
-    a.yOffset += (t.yOffset - a.yOffset) * lerp;
+    const tgt = targetRef.current;
+    a.scaleXZ += (tgt.scaleXZ - a.scaleXZ) * lerp;
+    a.heightZ += (tgt.heightZ - a.heightZ) * lerp;
+    a.yOffset += (tgt.yOffset - a.yOffset) * lerp;
 
     const hoverLift = hovered ? 0.25 : 0;
     const selectScale = isSelected ? 1.08 : hovered ? 1.04 : 1;
 
-    groupRef.current.position.x = position[0];
-    groupRef.current.position.y += ((position[1] + a.yOffset + hoverLift) - groupRef.current.position.y) * lerp;
-    groupRef.current.position.z = position[2];
-    groupRef.current.scale.set(a.scaleXZ * selectScale, selectScale, a.scaleXZ * selectScale);
+    // Interpolate from spawn to final position
+    const finalX = position[0];
+    const finalY = position[1] + a.yOffset + hoverLift;
+    const finalZ = position[2];
+
+    groupRef.current.position.x = spawnPos.x + (finalX - spawnPos.x) * ease;
+    groupRef.current.position.y = spawnPos.y + (finalY - spawnPos.y) * ease;
+    groupRef.current.position.z = spawnPos.z + (finalZ - spawnPos.z) * ease;
+
+    const entranceScale = 0.01 + ease * 0.99;
+    groupRef.current.scale.set(
+      a.scaleXZ * selectScale * entranceScale,
+      selectScale * entranceScale,
+      a.scaleXZ * selectScale * entranceScale
+    );
+
+    if (t_entrance >= 1) arrivedRef.current = true;
   });
 
   const handleClick = useCallback((e: any) => {
