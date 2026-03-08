@@ -12,6 +12,7 @@ interface Props {
   position: [number, number, number];
   isSelected: boolean;
   onSelect: (Z: number, multi: boolean) => void;
+  onHover?: (Z: number | null) => void;
   overlay: TableOverlay3D;
 }
 
