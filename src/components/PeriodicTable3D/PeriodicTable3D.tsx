@@ -1,12 +1,23 @@
-import { Suspense, useCallback, useMemo } from 'react';
+import { Suspense, useCallback, useMemo, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stars, Float } from '@react-three/drei';
+import { OrbitControls, Stars } from '@react-three/drei';
 import { useSelection } from '@/state/selectionStore';
 import { TABLE_POSITIONS, CAMERA_START, TABLE_CENTER } from './tableLayout';
 import { ElementCube } from './ElementCube';
 import { WebGLErrorBoundary } from '@/components/TutorialCanvas/WebGLErrorBoundary';
+import { Button } from '@/components/ui/button';
+import { Layers, Circle, Zap, Combine } from 'lucide-react';
 
-function TableScene() {
+export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both';
+
+const OVERLAY_OPTIONS: { value: TableOverlay3D; label: string; icon: typeof Layers; description: string }[] = [
+  { value: 'none', label: 'Flat', icon: Layers, description: 'Uniform cubes' },
+  { value: 'radius', label: 'Radius', icon: Circle, description: 'Size = atomic radius' },
+  { value: 'electronegativity', label: 'EN', icon: Zap, description: 'Height = electronegativity' },
+  { value: 'both', label: 'Both', icon: Combine, description: 'Size + height combined' },
+];
+
+function TableScene({ overlay }: { overlay: TableOverlay3D }) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
   const handleSelect = useCallback((Z: number, shiftKey: boolean) => {
@@ -17,16 +28,13 @@ function TableScene() {
 
   return (
     <>
-      {/* Lighting */}
       <ambientLight intensity={0.35} />
       <directionalLight position={[10, 15, 10]} intensity={0.6} />
       <directionalLight position={[-10, -5, 8]} intensity={0.3} color="#7aa7ff" />
       <pointLight position={[0, 5, 15]} intensity={0.4} color="#66f0a6" distance={40} />
 
-      {/* Starfield background */}
       <Stars radius={80} depth={60} count={2500} factor={3} saturation={0.8} fade speed={0.5} />
 
-      {/* Element cubes */}
       {TABLE_POSITIONS.map(({ element, x, y, z }) => (
         <ElementCube
           key={element.Z}
@@ -34,10 +42,10 @@ function TableScene() {
           position={[x, y, z]}
           isSelected={selectedSet.has(element.Z)}
           onSelect={handleSelect}
+          overlay={overlay}
         />
       ))}
 
-      {/* Orbit controls */}
       <OrbitControls
         target={TABLE_CENTER}
         enableDamping
@@ -54,6 +62,8 @@ function TableScene() {
 }
 
 export function PeriodicTable3D() {
+  const [overlay, setOverlay] = useState<TableOverlay3D>('none');
+
   return (
     <WebGLErrorBoundary>
       <div className="relative w-full rounded-2xl overflow-hidden border border-border/40 bg-background/60 backdrop-blur"
@@ -68,18 +78,57 @@ export function PeriodicTable3D() {
           </p>
         </div>
 
-        {/* Legend overlay */}
-        <div className="absolute bottom-4 left-4 z-10 flex flex-wrap gap-1.5 pointer-events-none">
-          {[
-            ['alkali metal', '#ff7a7a'], ['alkaline earth', '#ffd27a'], ['transition metal', '#7aa7ff'],
-            ['post-transition', '#7affc9'], ['metalloid', '#b792ff'], ['nonmetal', '#66f0a6'],
-            ['halogen', '#ff7ad6'], ['noble gas', '#7ad1ff'], ['lanthanide', '#ffa7f2'], ['actinide', '#ffb68a'],
-          ].map(([label, color]) => (
-            <span key={label} className="inline-flex items-center gap-1 text-[10px] text-foreground/80 bg-background/50 backdrop-blur-sm rounded-full px-2 py-0.5 border border-border/30">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+        {/* 3D Overlay mode toggle */}
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
+          {OVERLAY_OPTIONS.map(({ value, label, icon: Icon, description }) => (
+            <Button
+              key={value}
+              variant={overlay === value ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[130px]"
+              onClick={() => setOverlay(value)}
+              title={description}
+            >
+              <Icon className="h-3 w-3" />
               {label}
-            </span>
+            </Button>
           ))}
+        </div>
+
+        {/* Legend overlay */}
+        <div className="absolute bottom-4 left-4 z-10 flex flex-wrap gap-1.5 pointer-events-none max-w-[70%]">
+          {overlay === 'none' || overlay === 'radius' ? (
+            [
+              ['alkali metal', '#ff7a7a'], ['alkaline earth', '#ffd27a'], ['transition metal', '#7aa7ff'],
+              ['post-transition', '#7affc9'], ['metalloid', '#b792ff'], ['nonmetal', '#66f0a6'],
+              ['halogen', '#ff7ad6'], ['noble gas', '#7ad1ff'], ['lanthanide', '#ffa7f2'], ['actinide', '#ffb68a'],
+            ].map(([label, color]) => (
+              <span key={label} className="inline-flex items-center gap-1 text-[10px] text-foreground/80 bg-background/50 backdrop-blur-sm rounded-full px-2 py-0.5 border border-border/30">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                {label}
+              </span>
+            ))
+          ) : (
+            /* EN gradient legend */
+            <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm rounded-full px-3 py-1 border border-border/30">
+              <span className="text-[10px] text-foreground/80">Low EN</span>
+              <div className="w-24 h-2 rounded-full" style={{
+                background: 'linear-gradient(90deg, hsl(252,85%,45%), hsl(180,85%,50%), hsl(60,85%,50%), hsl(0,85%,55%))'
+              }} />
+              <span className="text-[10px] text-foreground/80">High EN</span>
+            </div>
+          )}
+          {overlay === 'radius' && (
+            <div className="flex items-center gap-2 bg-background/50 backdrop-blur-sm rounded-full px-3 py-1 border border-border/30">
+              <span className="text-[10px] text-foreground/80">Small</span>
+              <div className="flex items-center gap-0.5">
+                {[3, 5, 7, 9, 11].map(s => (
+                  <div key={s} className="rounded-sm bg-foreground/40" style={{ width: s, height: s }} />
+                ))}
+              </div>
+              <span className="text-[10px] text-foreground/80">Large atom</span>
+            </div>
+          )}
         </div>
 
         {/* Keyboard hint */}
@@ -93,7 +142,7 @@ export function PeriodicTable3D() {
           gl={{ antialias: true, alpha: true }}
         >
           <Suspense fallback={null}>
-            <TableScene />
+            <TableScene overlay={overlay} />
           </Suspense>
         </Canvas>
       </div>
