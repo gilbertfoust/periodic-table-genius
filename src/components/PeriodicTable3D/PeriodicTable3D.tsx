@@ -3,12 +3,15 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSelection } from '@/state/selectionStore';
-import { ELEMENTS } from '@/data/elements';
+import { ELEMENTS, ELEMENT_BY_Z } from '@/data/elements';
+import { ELEMENT_DETAILS } from '@/data/elementDetails';
+import { ATOMIC_RADII } from '@/data/atomicRadii';
+import { CATEGORY_COLORS } from '@/data/categoryColors';
 import { TABLE_POSITIONS, CAMERA_START, TABLE_CENTER } from './tableLayout';
 import { ElementCube } from './ElementCube';
 import { WebGLErrorBoundary } from '@/components/TutorialCanvas/WebGLErrorBoundary';
 import { Button } from '@/components/ui/button';
-import { Layers, Circle, Zap, Combine, Search, X, RotateCcw } from 'lucide-react';
+import { Layers, Circle, Zap, Combine, Search, X } from 'lucide-react';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both';
 
