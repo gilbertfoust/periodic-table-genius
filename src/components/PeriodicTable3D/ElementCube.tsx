@@ -69,6 +69,11 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
       const h = tEN != null ? 0.15 + tEN * 2.35 : 0.15;
       return { scaleXZ: s, heightZ: h, yOffset: h / 2 - 0.15 };
     }
+    if (overlay === 'meltingPoint' || overlay === 'density' || overlay === 'ionizationEnergy') {
+      const t = normalizeProperty(element.Z, overlay);
+      const h = t != null ? 0.15 + t * 2.35 : 0.15;
+      return { scaleXZ: 0.85, heightZ: h, yOffset: h / 2 - 0.15 };
+    }
     return { scaleXZ: 1, heightZ: 0.3, yOffset: 0 };
   }, [overlay, element.Z, element.en]);
 
