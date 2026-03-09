@@ -260,6 +260,7 @@ export function ElementCube({ element, position, isSelected, isFocused, isDimmed
         anchorX="center"
         anchorY="top"
         maxWidth={0.95}
+        fillOpacity={isDimmed ? 0.3 : 1}
       >
         {element.name.length > 10 ? element.name.slice(0, 9) + '…' : element.name}
       </Text>
