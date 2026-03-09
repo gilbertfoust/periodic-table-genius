@@ -16,6 +16,7 @@ import { Layers, Circle, Zap, Combine, Search, X, Thermometer, Weight, Activity,
 import { ElementComparison } from './ElementComparison';
 import { ElementDetailModal } from './ElementDetailModal';
 import { CATEGORY_ORDER } from '@/data/categoryColors';
+import { CenterStageVisualization } from './CenterStageVisualization';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both' | 'meltingPoint' | 'density' | 'ionizationEnergy';
 
@@ -294,6 +295,9 @@ function TableScene({
           entranceDelay={i * 0.012}
         />
       ))}
+
+      {/* Interactive visualization in the U-gap of the table */}
+      <CenterStageVisualization />
 
       <CameraController targetZ={flyToZ} onArrived={onFlyArrived} preset={preset} onPresetComplete={onPresetComplete} />
     </>
