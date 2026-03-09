@@ -116,12 +116,7 @@ function BondViz({ a, b, pair }: { a: Element; b: Element; pair: PairAnalysis })
         </>
       )}
 
-      {/* Label */}
-      <Html center position={[0, -0.5, 0]} distanceFactor={12}>
-        <span style={{ color: '#e2e8f0', fontSize: 8, fontWeight: 600, pointerEvents: 'none', whiteSpace: 'nowrap', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
-          {a.sym}–{b.sym} {pair.bondType}
-        </span>
-      </Html>
+
     </group>
   );
 }
