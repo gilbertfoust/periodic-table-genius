@@ -11,9 +11,11 @@ import { TABLE_POSITIONS, CAMERA_START, TABLE_CENTER } from './tableLayout';
 import { ElementCube } from './ElementCube';
 import { WebGLErrorBoundary } from '@/components/TutorialCanvas/WebGLErrorBoundary';
 import { Button } from '@/components/ui/button';
-import { Layers, Circle, Zap, Combine, Search, X, Thermometer, Weight, Activity } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Layers, Circle, Zap, Combine, Search, X, Thermometer, Weight, Activity, Filter } from 'lucide-react';
 import { ElementComparison } from './ElementComparison';
 import { ElementDetailModal } from './ElementDetailModal';
+import { CATEGORY_ORDER } from '@/data/categoryColors';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both' | 'meltingPoint' | 'density' | 'ionizationEnergy';
 
@@ -329,20 +331,34 @@ export function PeriodicTable3D() {
   const [showCompare, setShowCompare] = useState(false);
   const [focusedZ, setFocusedZ] = useState<number | null>(1); // Start at Hydrogen
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('none');
 
-  // Filter elements based on search query
+  // Filter elements based on search query and category filter
   const filteredZs = useMemo(() => {
-    if (!searchQuery.trim()) return null;
+    const hasSearchFilter = searchQuery.trim().length > 0;
+    const hasCategoryFilter = categoryFilter !== 'all';
+    
+    if (!hasSearchFilter && !hasCategoryFilter) return null;
+    
     const q = searchQuery.trim().toLowerCase();
-    const matching = ELEMENTS.filter(el =>
-      el.name.toLowerCase().includes(q) ||
-      el.sym.toLowerCase().includes(q) ||
-      el.category.toLowerCase().includes(q) ||
-      String(el.Z).includes(q)
-    );
+    const matching = ELEMENTS.filter(el => {
+      // Check search query match
+      const matchesSearch = !hasSearchFilter || (
+        el.name.toLowerCase().includes(q) ||
+        el.sym.toLowerCase().includes(q) ||
+        el.category.toLowerCase().includes(q) ||
+        String(el.Z).includes(q)
+      );
+      
+      // Check category filter match
+      const matchesCategory = !hasCategoryFilter || el.category === categoryFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
+    
     return new Set(matching.map(el => el.Z));
-  }, [searchQuery]);
+  }, [searchQuery, categoryFilter]);
 
   const handleSearchQueryChange = useCallback((query: string) => {
     setSearchQuery(query);
@@ -515,15 +531,45 @@ export function PeriodicTable3D() {
         style={{ height: 'calc(100vh - 180px)', minHeight: '500px' }}
         onMouseMove={handleMouseMove}
       >
-        {/* Floating title + search */}
-        <div className="absolute top-4 left-4 z-10 w-56">
+        {/* Floating title + search + filter */}
+        <div className="absolute top-4 left-4 z-10 w-64">
           <h1 className="text-2xl font-black tracking-tight text-foreground drop-shadow-lg pointer-events-none">
             Periodic Table <span className="text-primary">Genius</span>
           </h1>
           <p className="text-xs text-muted-foreground mt-1 mb-2 pointer-events-none">
             Orbit • Zoom • Click to explore all 118 elements
           </p>
-          <FlyToSearch onFlyTo={handleFlyTo} onQueryChange={handleSearchQueryChange} />
+          
+          {/* Search and Category Filter */}
+          <div className="space-y-2">
+            <FlyToSearch onFlyTo={handleFlyTo} onQueryChange={handleSearchQueryChange} />
+            
+            {/* Category Filter Dropdown */}
+            <div className="relative">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full h-8 text-xs bg-background/80 backdrop-blur-sm border-border/50">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3 w-3 text-muted-foreground" />
+                    <SelectValue placeholder="All categories" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="bg-card/95 backdrop-blur-md border-border/50">
+                  <SelectItem value="all" className="text-xs">All Categories</SelectItem>
+                  {CATEGORY_ORDER.map(category => (
+                    <SelectItem key={category} value={category} className="text-xs">
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: CATEGORY_COLORS[category] }}
+                        />
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
 
         {/* 3D Overlay mode toggle */}
