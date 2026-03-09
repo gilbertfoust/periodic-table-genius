@@ -16,8 +16,8 @@ import { getShellElectrons } from '@/scenes/AtomStructureScene';
 
 // ─── Position: center of the U-gap (groups 3-12, periods 1-3) ──────────────
 // col ~7 → x = (7-8.5)*1.3 ≈ -1.95,  row ~1 → y = -(1-4.5)*1.3 ≈ 4.55
-const GAP_CENTER: [number, number, number] = [0, 3.5, 0.5];
-const STAGE_SCALE = 1.8;
+const GAP_CENTER: [number, number, number] = [0, 5.8, 0.5];
+const STAGE_SCALE = 1.5;
 
 // ─── Single atom visualization ──────────────────────────────────────────────
 function AtomViz({ element }: { element: Element }) {
@@ -62,12 +62,7 @@ function AtomViz({ element }: { element: Element }) {
         );
       })}
 
-      {/* Label */}
-      <Html center position={[0, -0.3, 0]} distanceFactor={12}>
-        <span style={{ color: '#e2e8f0', fontSize: 9, fontWeight: 700, pointerEvents: 'none', whiteSpace: 'nowrap', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
-          {element.sym}
-        </span>
-      </Html>
+
     </group>
   );
 }
@@ -121,12 +116,7 @@ function BondViz({ a, b, pair }: { a: Element; b: Element; pair: PairAnalysis })
         </>
       )}
 
-      {/* Label */}
-      <Html center position={[0, -0.5, 0]} distanceFactor={12}>
-        <span style={{ color: '#e2e8f0', fontSize: 8, fontWeight: 600, pointerEvents: 'none', whiteSpace: 'nowrap', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
-          {a.sym}–{b.sym} {pair.bondType}
-        </span>
-      </Html>
+
     </group>
   );
 }
