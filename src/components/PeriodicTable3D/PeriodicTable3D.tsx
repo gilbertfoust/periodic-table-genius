@@ -531,15 +531,45 @@ export function PeriodicTable3D() {
         style={{ height: 'calc(100vh - 180px)', minHeight: '500px' }}
         onMouseMove={handleMouseMove}
       >
-        {/* Floating title + search */}
-        <div className="absolute top-4 left-4 z-10 w-56">
+        {/* Floating title + search + filter */}
+        <div className="absolute top-4 left-4 z-10 w-64">
           <h1 className="text-2xl font-black tracking-tight text-foreground drop-shadow-lg pointer-events-none">
             Periodic Table <span className="text-primary">Genius</span>
           </h1>
           <p className="text-xs text-muted-foreground mt-1 mb-2 pointer-events-none">
             Orbit • Zoom • Click to explore all 118 elements
           </p>
-          <FlyToSearch onFlyTo={handleFlyTo} onQueryChange={handleSearchQueryChange} />
+          
+          {/* Search and Category Filter */}
+          <div className="space-y-2">
+            <FlyToSearch onFlyTo={handleFlyTo} onQueryChange={handleSearchQueryChange} />
+            
+            {/* Category Filter Dropdown */}
+            <div className="relative">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full h-8 text-xs bg-background/80 backdrop-blur-sm border-border/50">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3 w-3 text-muted-foreground" />
+                    <SelectValue placeholder="All categories" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="bg-card/95 backdrop-blur-md border-border/50">
+                  <SelectItem value="all" className="text-xs">All Categories</SelectItem>
+                  {CATEGORY_ORDER.map(category => (
+                    <SelectItem key={category} value={category} className="text-xs">
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: CATEGORY_COLORS[category] }}
+                        />
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
 
         {/* 3D Overlay mode toggle */}
