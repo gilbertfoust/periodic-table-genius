@@ -519,8 +519,9 @@ export function PeriodicTable3D() {
         )}
 
         {/* Keyboard hint */}
-        <div className="absolute bottom-4 right-4 z-10 text-[10px] text-muted-foreground/60 pointer-events-none">
-          Shift+Click to multi-select &amp; compare
+        <div className="absolute bottom-4 right-4 z-10 text-[10px] text-muted-foreground/60 pointer-events-none space-y-0.5 text-right">
+          <div>Arrow keys to navigate • Enter to view details</div>
+          <div>Shift+Click to multi-select &amp; compare</div>
         </div>
 
         <Canvas
