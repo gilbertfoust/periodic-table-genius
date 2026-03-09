@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, Grid } from '@react-three/drei';
+import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSelection } from '@/state/selectionStore';
 import { ELEMENTS, ELEMENT_BY_Z } from '@/data/elements';
@@ -42,6 +42,59 @@ const GROUP_CAMERA_POSITIONS: Record<string, { position: THREE.Vector3; target: 
 
 // Pre-build lookup: Z → position
 const POSITION_BY_Z = new Map(TABLE_POSITIONS.map(p => [p.element.Z, p]));
+
+function resolveHslCssVar(varName: string, fallback: string) {
+  // Our theme vars store HSL triplets like "152 80% 62%".
+  const raw = typeof window !== 'undefined'
+    ? getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+    : '';
+  return `hsl(${(raw || fallback).trim()})`;
+}
+
+function useResolvedHslCssVar(varName: string, fallback: string) {
+  const [value, setValue] = useState(() => resolveHslCssVar(varName, fallback));
+  useEffect(() => {
+    setValue(resolveHslCssVar(varName, fallback));
+  }, [varName, fallback]);
+  return value;
+}
+
+function FloorGrid() {
+  const minor = useResolvedHslCssVar('--border', '217 25% 18%');
+  const major = useResolvedHslCssVar('--muted-foreground', '215 20% 65%');
+
+  const gridMinor = useMemo(() => new THREE.GridHelper(80, 40, major, minor), [major, minor]);
+  const gridMajor = useMemo(() => new THREE.GridHelper(80, 8, major, major), [major]);
+
+  useEffect(() => {
+    const apply = (obj: THREE.GridHelper, opacity: number) => {
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m) => {
+        const mat = m as THREE.LineBasicMaterial;
+        mat.transparent = true;
+        mat.opacity = opacity;
+        mat.depthWrite = false;
+      });
+    };
+
+    apply(gridMinor, 0.18);
+    apply(gridMajor, 0.28);
+
+    return () => {
+      gridMinor.geometry.dispose();
+      gridMajor.geometry.dispose();
+      (Array.isArray(gridMinor.material) ? gridMinor.material : [gridMinor.material]).forEach(m => m.dispose());
+      (Array.isArray(gridMajor.material) ? gridMajor.material : [gridMajor.material]).forEach(m => m.dispose());
+    };
+  }, [gridMinor, gridMajor]);
+
+  return (
+    <group position={[0, -8, 0]}>
+      <primitive object={gridMinor} />
+      <primitive object={gridMajor} />
+    </group>
+  );
+}
 
 /** Smoothly animate camera + controls target to a position, or continuous rotation */
 function CameraController({ 
@@ -201,6 +254,11 @@ function TableScene({
 }) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
+  const cPrimary = useResolvedHslCssVar('--primary', '152 80% 62%');
+  const cFill = useResolvedHslCssVar('--muted-foreground', '215 20% 65%');
+  const cSky = useResolvedHslCssVar('--foreground', '210 40% 96%');
+  const cGround = useResolvedHslCssVar('--background', '222 84% 5%');
+
   const handleSelect = useCallback((Z: number, shiftKey: boolean) => {
     selectElement(Z, shiftKey || multiSelectMode);
   }, [selectElement, multiSelectMode]);
@@ -212,25 +270,12 @@ function TableScene({
       {/* Enhanced lighting for better visibility */}
       <ambientLight intensity={0.55} />
       <directionalLight position={[10, 15, 10]} intensity={0.7} />
-      <directionalLight position={[-10, -5, 8]} intensity={0.4} color="#7aa7ff" />
-      <pointLight position={[0, 5, 15]} intensity={0.5} color="#66f0a6" distance={40} />
-      <hemisphereLight intensity={0.15} color="#ffffff" groundColor="#1a1f2e" />
+      <directionalLight position={[-10, -5, 8]} intensity={0.4} color={cFill} />
+      <pointLight position={[0, 5, 15]} intensity={0.5} color={cPrimary} distance={40} />
+      <hemisphereLight intensity={0.15} color={cSky} groundColor={cGround} />
 
-      {/* Subtle grid for depth perception */}
-      <Grid
-        position={[0, -8, 0]}
-        args={[40, 40]}
-        cellSize={2}
-        cellThickness={0.5}
-        cellColor="#334155"
-        sectionSize={10}
-        sectionThickness={1}
-        sectionColor="#475569"
-        fadeDistance={50}
-        fadeStrength={1}
-        followCamera={false}
-        infiniteGrid={false}
-      />
+      {/* Subtle grid for depth perception (stable, lightweight) */}
+      <FloorGrid />
 
       <Stars radius={80} depth={60} count={2500} factor={3} saturation={0.8} fade speed={0.5} />
 
