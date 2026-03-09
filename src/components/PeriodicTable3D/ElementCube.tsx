@@ -119,6 +119,19 @@ export function ElementCube({ element, position, isSelected, isFocused, onSelect
     );
 
     if (t_entrance >= 1) arrivedRef.current = true;
+
+    // Animate focus ring
+    if (focusRingRef.current) {
+      const mat = focusRingRef.current.material as THREE.MeshStandardMaterial;
+      const targetOpacity = isFocused ? 0.9 : 0;
+      mat.opacity += (targetOpacity - mat.opacity) * delta * 10;
+      
+      // Pulse effect when focused
+      if (isFocused) {
+        const pulse = Math.sin(Date.now() * 0.004) * 0.08 + 1.0;
+        focusRingRef.current.scale.setScalar(pulse);
+      }
+    }
   });
 
   const handleClick = useCallback((e: any) => {
