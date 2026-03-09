@@ -164,43 +164,44 @@ export function ElementCube({ element, position, isSelected, isFocused, isDimmed
 
   // Color tint for heatmap overlays
   const matColor = useMemo(() => {
+    let baseColor = color;
+    
     if (overlay === 'electronegativity' || overlay === 'both') {
       const t = normalizeEN(element.en);
       if (t != null) {
         const c = new THREE.Color();
         c.setHSL(0.7 - t * 0.7, 0.85, 0.45 + t * 0.15);
-        return c;
+        baseColor = c;
       }
-    }
-    if (overlay === 'meltingPoint') {
+    } else if (overlay === 'meltingPoint') {
       const t = normalizeProperty(element.Z, 'meltingPoint');
       if (t != null) {
         const c = new THREE.Color();
-        // Blue → yellow → orange → deep red
         c.setHSL(0.58 - t * 0.58, 0.9, 0.45 + t * 0.1);
-        return c;
+        baseColor = c;
       }
-    }
-    if (overlay === 'density') {
+    } else if (overlay === 'density') {
       const t = normalizeProperty(element.Z, 'density');
       if (t != null) {
         const c = new THREE.Color();
-        // Cyan → purple → magenta
         c.setHSL(0.5 - t * 0.28, 0.7 + t * 0.15, 0.55 - t * 0.15);
-        return c;
+        baseColor = c;
       }
-    }
-    if (overlay === 'ionizationEnergy') {
+    } else if (overlay === 'ionizationEnergy') {
       const t = normalizeProperty(element.Z, 'ionizationEnergy');
       if (t != null) {
         const c = new THREE.Color();
-        // Green → yellow → orange → red
         c.setHSL(0.33 - t * 0.33, 0.75 + t * 0.15, 0.4 + t * 0.1);
-        return c;
+        baseColor = c;
       }
     }
-    return color;
-  }, [overlay, element.en, element.Z, color]);
+    
+    // Apply dimming if needed
+    if (isDimmed) {
+      return baseColor.clone().multiplyScalar(0.3);
+    }
+    return baseColor;
+  }, [overlay, element.en, element.Z, color, isDimmed]);
 
   const matEmissive = useMemo(() => matColor.clone().multiplyScalar(0.5), [matColor]);
 
