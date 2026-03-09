@@ -235,6 +235,7 @@ export function ElementCube({ element, position, isSelected, isFocused, isDimmed
         color="white"
         anchorX="left"
         anchorY="bottom"
+        fillOpacity={isDimmed ? 0.3 : 1}
       >
         {String(element.Z)}
       </Text>
