@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars } from '@react-three/drei';
+import { OrbitControls, Stars, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSelection } from '@/state/selectionStore';
 import { ELEMENTS, ELEMENT_BY_Z } from '@/data/elements';
