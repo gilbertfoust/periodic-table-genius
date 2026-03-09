@@ -373,6 +373,7 @@ export function PeriodicTable3D() {
     setFlyToZ(Z);
     setFlyKey(k => k + 1);
     selectElement(Z, false);
+    setCameraPreset('none'); // Stop any preset when flying to specific element
   }, [selectElement]);
 
   const handleFlyArrived = useCallback(() => {}, []);
