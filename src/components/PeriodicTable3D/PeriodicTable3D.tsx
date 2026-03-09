@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, Grid } from '@react-three/drei';
+import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSelection } from '@/state/selectionStore';
 import { ELEMENTS, ELEMENT_BY_Z } from '@/data/elements';
@@ -42,6 +42,59 @@ const GROUP_CAMERA_POSITIONS: Record<string, { position: THREE.Vector3; target: 
 
 // Pre-build lookup: Z → position
 const POSITION_BY_Z = new Map(TABLE_POSITIONS.map(p => [p.element.Z, p]));
+
+function resolveHslCssVar(varName: string, fallback: string) {
+  // Our theme vars store HSL triplets like "152 80% 62%".
+  const raw = typeof window !== 'undefined'
+    ? getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
+    : '';
+  return `hsl(${(raw || fallback).trim()})`;
+}
+
+function useResolvedHslCssVar(varName: string, fallback: string) {
+  const [value, setValue] = useState(() => resolveHslCssVar(varName, fallback));
+  useEffect(() => {
+    setValue(resolveHslCssVar(varName, fallback));
+  }, [varName, fallback]);
+  return value;
+}
+
+function FloorGrid() {
+  const minor = useResolvedHslCssVar('--border', '217 25% 18%');
+  const major = useResolvedHslCssVar('--muted-foreground', '215 20% 65%');
+
+  const gridMinor = useMemo(() => new THREE.GridHelper(80, 40, major, minor), [major, minor]);
+  const gridMajor = useMemo(() => new THREE.GridHelper(80, 8, major, major), [major]);
+
+  useEffect(() => {
+    const apply = (obj: THREE.GridHelper, opacity: number) => {
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m) => {
+        const mat = m as THREE.LineBasicMaterial;
+        mat.transparent = true;
+        mat.opacity = opacity;
+        mat.depthWrite = false;
+      });
+    };
+
+    apply(gridMinor, 0.18);
+    apply(gridMajor, 0.28);
+
+    return () => {
+      gridMinor.geometry.dispose();
+      gridMajor.geometry.dispose();
+      (Array.isArray(gridMinor.material) ? gridMinor.material : [gridMinor.material]).forEach(m => m.dispose());
+      (Array.isArray(gridMajor.material) ? gridMajor.material : [gridMajor.material]).forEach(m => m.dispose());
+    };
+  }, [gridMinor, gridMajor]);
+
+  return (
+    <group position={[0, -8, 0]}>
+      <primitive object={gridMinor} />
+      <primitive object={gridMajor} />
+    </group>
+  );
+}
 
 /** Smoothly animate camera + controls target to a position, or continuous rotation */
 function CameraController({ 
