@@ -117,6 +117,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
           position={[x, y, z]}
           isSelected={selectedSet.has(element.Z)}
           isFocused={focusedZ === element.Z}
+          isDimmed={filteredZs !== null && !filteredZs.has(element.Z)}
           onSelect={handleSelect}
           onHover={onHoverElement}
           onDoubleClick={onDoubleClickElement}
