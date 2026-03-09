@@ -329,6 +329,7 @@ export function PeriodicTable3D() {
   const [showCompare, setShowCompare] = useState(false);
   const [focusedZ, setFocusedZ] = useState<number | null>(1); // Start at Hydrogen
   const [searchQuery, setSearchQuery] = useState('');
+  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('none');
 
   // Filter elements based on search query
   const filteredZs = useMemo(() => {
@@ -345,6 +346,17 @@ export function PeriodicTable3D() {
 
   const handleSearchQueryChange = useCallback((query: string) => {
     setSearchQuery(query);
+  }, []);
+
+  const handlePresetChange = useCallback((preset: CameraPreset) => {
+    setCameraPreset(preset);
+    if (preset !== 'none') {
+      setFlyToZ(null); // Clear individual element focus
+    }
+  }, []);
+
+  const handlePresetComplete = useCallback(() => {
+    // Called when preset animation completes (not used for continuous animations)
   }, []);
 
   // Auto-show comparison when exactly 2 unique elements selected
