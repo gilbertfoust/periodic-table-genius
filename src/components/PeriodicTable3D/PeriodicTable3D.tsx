@@ -17,6 +17,8 @@ import { ElementDetailModal } from './ElementDetailModal';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both' | 'meltingPoint' | 'density' | 'ionizationEnergy';
 
+export type CameraPreset = 'none' | 'rotate' | 'alkali' | 'noble' | 'transition' | 'lanthanide' | 'halogen' | 'tour';
+
 const OVERLAY_OPTIONS: { value: TableOverlay3D; label: string; icon: typeof Layers; description: string }[] = [
   { value: 'none', label: 'Flat', icon: Layers, description: 'Uniform cubes' },
   { value: 'radius', label: 'Radius', icon: Circle, description: 'Size = atomic radius' },
@@ -27,16 +29,39 @@ const OVERLAY_OPTIONS: { value: TableOverlay3D; label: string; icon: typeof Laye
   { value: 'ionizationEnergy', label: 'Ion. Energy', icon: Activity, description: 'Height = 1st ionization energy' },
 ];
 
+// Camera preset positions for zooming to specific element groups
+const GROUP_CAMERA_POSITIONS: Record<string, { position: THREE.Vector3; target: THREE.Vector3 }> = {
+  alkali: { position: new THREE.Vector3(-10, 0, 12), target: new THREE.Vector3(-10, 0, 0) },
+  noble: { position: new THREE.Vector3(11, 0, 12), target: new THREE.Vector3(11, 0, 0) },
+  transition: { position: new THREE.Vector3(0, 0, 18), target: new THREE.Vector3(0, 1, 0) },
+  lanthanide: { position: new THREE.Vector3(0, -6, 12), target: new THREE.Vector3(0, -6, 0) },
+  halogen: { position: new THREE.Vector3(9, 0, 12), target: new THREE.Vector3(9, 1, 0) },
+};
+
 // Pre-build lookup: Z → position
 const POSITION_BY_Z = new Map(TABLE_POSITIONS.map(p => [p.element.Z, p]));
 
-/** Smoothly animate camera + controls target to a position */
-function CameraController({ targetZ, onArrived }: { targetZ: number | null; onArrived: () => void }) {
+/** Smoothly animate camera + controls target to a position, or continuous rotation */
+function CameraController({ 
+  targetZ, 
+  onArrived, 
+  preset, 
+  onPresetComplete 
+}: { 
+  targetZ: number | null; 
+  onArrived: () => void;
+  preset: CameraPreset;
+  onPresetComplete: () => void;
+}) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const flyingRef = useRef(false);
   const targetPos = useRef(new THREE.Vector3());
   const targetLook = useRef(new THREE.Vector3());
+  const rotationSpeed = useRef(0);
+  const tourIndex = useRef(0);
+  const tourTimer = useRef(0);
+  const tourStops = ['alkali', 'noble', 'transition', 'lanthanide', 'halogen'];
 
   useEffect(() => {
     if (targetZ == null) return;
@@ -49,7 +74,71 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
     flyingRef.current = true;
   }, [targetZ]);
 
+  // Handle presets
+  useEffect(() => {
+    if (preset === 'rotate') {
+      rotationSpeed.current = 0.3;
+      flyingRef.current = false;
+    } else if (preset === 'tour') {
+      tourIndex.current = 0;
+      tourTimer.current = 0;
+      // Start with first stop
+      const firstStop = tourStops[0];
+      const pos = GROUP_CAMERA_POSITIONS[firstStop];
+      if (pos) {
+        targetPos.current.copy(pos.position);
+        targetLook.current.copy(pos.target);
+        flyingRef.current = true;
+      }
+    } else if (preset !== 'none' && GROUP_CAMERA_POSITIONS[preset]) {
+      const pos = GROUP_CAMERA_POSITIONS[preset];
+      targetPos.current.copy(pos.position);
+      targetLook.current.copy(pos.target);
+      flyingRef.current = true;
+      rotationSpeed.current = 0;
+    } else {
+      rotationSpeed.current = 0;
+    }
+  }, [preset]);
+
   useFrame((_, delta) => {
+    // Handle rotation preset
+    if (preset === 'rotate' && controlsRef.current) {
+      const angle = Date.now() * 0.0003;
+      const radius = 28;
+      camera.position.x = Math.sin(angle) * radius;
+      camera.position.z = Math.cos(angle) * radius;
+      camera.position.y = 0.5 + Math.sin(angle * 0.5) * 3;
+      const ct = controlsRef.current.target as THREE.Vector3;
+      ct.set(TABLE_CENTER[0], TABLE_CENTER[1], TABLE_CENTER[2]);
+      controlsRef.current.update();
+      return;
+    }
+
+    // Handle tour mode
+    if (preset === 'tour') {
+      tourTimer.current += delta;
+      
+      // Check if arrived at current stop
+      if (flyingRef.current && camera.position.distanceTo(targetPos.current) < 0.1) {
+        flyingRef.current = false;
+        tourTimer.current = 0; // Reset timer when arrived
+      }
+      
+      // Stay at each stop for 3 seconds
+      if (!flyingRef.current && tourTimer.current > 3) {
+        tourIndex.current = (tourIndex.current + 1) % tourStops.length;
+        const nextStop = tourStops[tourIndex.current];
+        const pos = GROUP_CAMERA_POSITIONS[nextStop];
+        if (pos) {
+          targetPos.current.copy(pos.position);
+          targetLook.current.copy(pos.target);
+          flyingRef.current = true;
+        }
+      }
+    }
+
+    // Handle smooth flying to target position
     if (!flyingRef.current) return;
     const lerp = Math.min(delta * 3, 0.12);
 
@@ -64,7 +153,9 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
     // Check if arrived
     if (camera.position.distanceTo(targetPos.current) < 0.05) {
       flyingRef.current = false;
-      onArrived();
+      if (preset !== 'tour') {
+        onArrived();
+      }
     }
   });
 
@@ -80,11 +171,22 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
       panSpeed={0.5}
       rotateSpeed={0.5}
       zoomSpeed={0.8}
+      enabled={preset === 'none'}
     />
   );
 }
 
-function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleClickElement, focusedZ, filteredZs }: {
+function TableScene({ 
+  overlay, 
+  flyToZ, 
+  onFlyArrived, 
+  onHoverElement, 
+  onDoubleClickElement, 
+  focusedZ, 
+  filteredZs,
+  preset,
+  onPresetComplete 
+}: {
   overlay: TableOverlay3D;
   flyToZ: number | null;
   onFlyArrived: () => void;
@@ -92,6 +194,8 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
   onDoubleClickElement: (Z: number) => void;
   focusedZ: number | null;
   filteredZs: Set<number> | null;
+  preset: CameraPreset;
+  onPresetComplete: () => void;
 }) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
@@ -126,7 +230,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
         />
       ))}
 
-      <CameraController targetZ={flyToZ} onArrived={onFlyArrived} />
+      <CameraController targetZ={flyToZ} onArrived={onFlyArrived} preset={preset} onPresetComplete={onPresetComplete} />
     </>
   );
 }
@@ -225,6 +329,7 @@ export function PeriodicTable3D() {
   const [showCompare, setShowCompare] = useState(false);
   const [focusedZ, setFocusedZ] = useState<number | null>(1); // Start at Hydrogen
   const [searchQuery, setSearchQuery] = useState('');
+  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('none');
 
   // Filter elements based on search query
   const filteredZs = useMemo(() => {
@@ -243,6 +348,17 @@ export function PeriodicTable3D() {
     setSearchQuery(query);
   }, []);
 
+  const handlePresetChange = useCallback((preset: CameraPreset) => {
+    setCameraPreset(preset);
+    if (preset !== 'none') {
+      setFlyToZ(null); // Clear individual element focus
+    }
+  }, []);
+
+  const handlePresetComplete = useCallback(() => {
+    // Called when preset animation completes (not used for continuous animations)
+  }, []);
+
   // Auto-show comparison when exactly 2 unique elements selected
   const comparePair = useMemo(() => {
     const unique = [...new Set(selectedElements)];
@@ -257,6 +373,7 @@ export function PeriodicTable3D() {
     setFlyToZ(Z);
     setFlyKey(k => k + 1);
     selectElement(Z, false);
+    setCameraPreset('none'); // Stop any preset when flying to specific element
   }, [selectElement]);
 
   const handleFlyArrived = useCallback(() => {}, []);
@@ -410,20 +527,97 @@ export function PeriodicTable3D() {
         </div>
 
         {/* 3D Overlay mode toggle */}
-        <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
-          {OVERLAY_OPTIONS.map(({ value, label, icon: Icon, description }) => (
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+          {/* Camera Presets */}
+          <div className="flex flex-col gap-1 bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl p-2 shadow-lg">
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-0.5">
+              Camera
+            </div>
             <Button
-              key={value}
-              variant={overlay === value ? 'default' : 'outline'}
+              variant={cameraPreset === 'rotate' ? 'default' : 'outline'}
               size="sm"
-              className="gap-1.5 text-xs justify-start min-w-[130px]"
-              onClick={() => setOverlay(value)}
-              title={description}
+              className="gap-1.5 text-xs justify-start min-w-[110px]"
+              onClick={() => handlePresetChange(cameraPreset === 'rotate' ? 'none' : 'rotate')}
+              title="Continuous rotation around table"
             >
-              <Icon className="h-3 w-3" />
-              {label}
+              <Activity className="h-3 w-3" />
+              {cameraPreset === 'rotate' ? 'Stop' : 'Rotate'}
             </Button>
-          ))}
+            <Button
+              variant={cameraPreset === 'tour' ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px]"
+              onClick={() => handlePresetChange(cameraPreset === 'tour' ? 'none' : 'tour')}
+              title="Auto-tour through element groups"
+            >
+              <Zap className="h-3 w-3" />
+              {cameraPreset === 'tour' ? 'Stop Tour' : 'Tour Mode'}
+            </Button>
+            <div className="h-px bg-border/30 my-0.5" />
+            <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
+              Groups
+            </div>
+            <Button
+              variant={cameraPreset === 'alkali' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'alkali' ? 'none' : 'alkali')}
+            >
+              Alkali Metals
+            </Button>
+            <Button
+              variant={cameraPreset === 'noble' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'noble' ? 'none' : 'noble')}
+            >
+              Noble Gases
+            </Button>
+            <Button
+              variant={cameraPreset === 'transition' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'transition' ? 'none' : 'transition')}
+            >
+              Transition
+            </Button>
+            <Button
+              variant={cameraPreset === 'halogen' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'halogen' ? 'none' : 'halogen')}
+            >
+              Halogens
+            </Button>
+            <Button
+              variant={cameraPreset === 'lanthanide' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'lanthanide' ? 'none' : 'lanthanide')}
+            >
+              Lanthanides
+            </Button>
+          </div>
+
+          {/* Overlay modes */}
+          <div className="flex flex-col gap-1 bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl p-2 shadow-lg">
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-0.5">
+              Overlay
+            </div>
+            {OVERLAY_OPTIONS.map(({ value, label, icon: Icon, description }) => (
+              <Button
+                key={value}
+                variant={overlay === value ? 'default' : 'ghost'}
+                size="sm"
+                className="gap-1.5 text-xs justify-start min-w-[110px] h-8"
+                onClick={() => setOverlay(value)}
+                title={description}
+              >
+                <Icon className="h-3 w-3" />
+                {label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Hover Tooltip */}
@@ -563,6 +757,8 @@ export function PeriodicTable3D() {
               onDoubleClickElement={handleDoubleClickElement}
               focusedZ={focusedZ}
               filteredZs={filteredZs}
+              preset={cameraPreset}
+              onPresetComplete={handlePresetComplete}
             />
           </Suspense>
         </Canvas>
