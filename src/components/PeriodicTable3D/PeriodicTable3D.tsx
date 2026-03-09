@@ -214,6 +214,7 @@ export function PeriodicTable3D() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { selectedElements, selectElement } = useSelection();
   const [showCompare, setShowCompare] = useState(false);
+  const [focusedZ, setFocusedZ] = useState<number | null>(1); // Start at Hydrogen
 
   // Auto-show comparison when exactly 2 unique elements selected
   const comparePair = useMemo(() => {
