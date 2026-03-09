@@ -84,12 +84,13 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
   );
 }
 
-function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleClickElement }: {
+function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleClickElement, focusedZ }: {
   overlay: TableOverlay3D;
   flyToZ: number | null;
   onFlyArrived: () => void;
   onHoverElement: (Z: number | null) => void;
   onDoubleClickElement: (Z: number) => void;
+  focusedZ: number | null;
 }) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
@@ -114,6 +115,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
           element={element}
           position={[x, y, z]}
           isSelected={selectedSet.has(element.Z)}
+          isFocused={focusedZ === element.Z}
           onSelect={handleSelect}
           onHover={onHoverElement}
           onDoubleClick={onDoubleClickElement}
@@ -214,6 +216,7 @@ export function PeriodicTable3D() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { selectedElements, selectElement } = useSelection();
   const [showCompare, setShowCompare] = useState(false);
+  const [focusedZ, setFocusedZ] = useState<number | null>(1); // Start at Hydrogen
 
   // Auto-show comparison when exactly 2 unique elements selected
   const comparePair = useMemo(() => {
@@ -241,6 +244,111 @@ export function PeriodicTable3D() {
   const handleDoubleClickElement = useCallback((Z: number) => {
     setDetailZ(Z);
   }, []);
+
+  // Navigate to nearest element in given direction
+  const navigateElement = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
+    if (!focusedZ) {
+      setFocusedZ(1); // Start at H if no focus
+      return;
+    }
+
+    const currentPos = POSITION_BY_Z.get(focusedZ);
+    if (!currentPos) return;
+
+    let bestZ: number | null = null;
+    let bestDist = Infinity;
+
+    for (const pos of TABLE_POSITIONS) {
+      if (pos.element.Z === focusedZ) continue;
+
+      const dx = pos.x - currentPos.x;
+      const dy = pos.y - currentPos.y;
+
+      // Check if element is in the correct direction
+      let isValidDirection = false;
+      let primaryDist = 0;
+      let secondaryDist = 0;
+
+      if (direction === 'right' && dx > 0.1) {
+        isValidDirection = true;
+        primaryDist = dx;
+        secondaryDist = Math.abs(dy);
+      } else if (direction === 'left' && dx < -0.1) {
+        isValidDirection = true;
+        primaryDist = -dx;
+        secondaryDist = Math.abs(dy);
+      } else if (direction === 'up' && dy < -0.1) {
+        isValidDirection = true;
+        primaryDist = -dy;
+        secondaryDist = Math.abs(dx);
+      } else if (direction === 'down' && dy > 0.1) {
+        isValidDirection = true;
+        primaryDist = dy;
+        secondaryDist = Math.abs(dx);
+      }
+
+      if (isValidDirection) {
+        // Prioritize elements in the primary direction, use secondary for tiebreaking
+        const totalDist = primaryDist + secondaryDist * 0.5;
+        if (totalDist < bestDist) {
+          bestDist = totalDist;
+          bestZ = pos.element.Z;
+        }
+      }
+    }
+
+    if (bestZ !== null) {
+      setFocusedZ(bestZ);
+      setFlyToZ(bestZ);
+      setFlyKey(k => k + 1);
+    }
+  }, [focusedZ]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          navigateElement('up');
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          navigateElement('down');
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          navigateElement('left');
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          navigateElement('right');
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (focusedZ) {
+            setDetailZ(focusedZ);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          if (detailZ !== null) {
+            setDetailZ(null);
+          } else {
+            setFocusedZ(null);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusedZ, detailZ, navigateElement]);
 
   // Track mouse position relative to container
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -411,8 +519,9 @@ export function PeriodicTable3D() {
         )}
 
         {/* Keyboard hint */}
-        <div className="absolute bottom-4 right-4 z-10 text-[10px] text-muted-foreground/60 pointer-events-none">
-          Shift+Click to multi-select &amp; compare
+        <div className="absolute bottom-4 right-4 z-10 text-[10px] text-muted-foreground/60 pointer-events-none space-y-0.5 text-right">
+          <div>Arrow keys to navigate • Enter to view details</div>
+          <div>Shift+Click to multi-select &amp; compare</div>
         </div>
 
         <Canvas
@@ -421,7 +530,14 @@ export function PeriodicTable3D() {
           gl={{ antialias: true, alpha: true }}
         >
           <Suspense fallback={null}>
-            <TableScene overlay={overlay} flyToZ={flyToZ} onFlyArrived={handleFlyArrived} onHoverElement={handleHoverElement} onDoubleClickElement={handleDoubleClickElement} />
+            <TableScene 
+              overlay={overlay} 
+              flyToZ={flyToZ} 
+              onFlyArrived={handleFlyArrived} 
+              onHoverElement={handleHoverElement} 
+              onDoubleClickElement={handleDoubleClickElement}
+              focusedZ={focusedZ}
+            />
           </Suspense>
         </Canvas>
       </div>

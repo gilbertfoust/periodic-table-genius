@@ -12,6 +12,7 @@ interface Props {
   element: Element;
   position: [number, number, number];
   isSelected: boolean;
+  isFocused?: boolean;
   onSelect: (Z: number, multi: boolean) => void;
   onHover?: (Z: number | null) => void;
   onDoubleClick?: (Z: number) => void;
@@ -33,9 +34,10 @@ function normalizeEN(en: number | null): number | null {
   return (en - EN_MIN) / (EN_MAX - EN_MIN);
 }
 
-export function ElementCube({ element, position, isSelected, onSelect, onHover, onDoubleClick, overlay, entranceDelay = 0 }: Props) {
+export function ElementCube({ element, position, isSelected, isFocused, onSelect, onHover, onDoubleClick, overlay, entranceDelay = 0 }: Props) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
+  const focusRingRef = useRef<THREE.Mesh>(null);
 
   // Random spawn position, computed once
   const spawnPos = useMemo(() => ({
@@ -117,6 +119,19 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
     );
 
     if (t_entrance >= 1) arrivedRef.current = true;
+
+    // Animate focus ring
+    if (focusRingRef.current) {
+      const mat = focusRingRef.current.material as THREE.MeshStandardMaterial;
+      const targetOpacity = isFocused ? 0.9 : 0;
+      mat.opacity += (targetOpacity - mat.opacity) * delta * 10;
+      
+      // Pulse effect when focused
+      if (isFocused) {
+        const pulse = Math.sin(Date.now() * 0.004) * 0.08 + 1.0;
+        focusRingRef.current.scale.setScalar(pulse);
+      }
+    }
   });
 
   const handleClick = useCallback((e: any) => {
@@ -243,6 +258,19 @@ export function ElementCube({ element, position, isSelected, onSelect, onHover, 
       >
         {element.name.length > 10 ? element.name.slice(0, 9) + '…' : element.name}
       </Text>
+
+      {/* Focus ring indicator (white pulsing ring) */}
+      <mesh ref={focusRingRef} position={[0, heightZ / 2 + 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.58, 0.66, 32]} />
+        <meshStandardMaterial
+          color="#ffffff"
+          emissive="#ffffff"
+          emissiveIntensity={1.8}
+          transparent
+          opacity={0}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
       {/* Selection glow ring */}
       {isSelected && (
