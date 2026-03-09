@@ -13,6 +13,7 @@ interface Props {
   position: [number, number, number];
   isSelected: boolean;
   isFocused?: boolean;
+  isDimmed?: boolean;
   onSelect: (Z: number, multi: boolean) => void;
   onHover?: (Z: number | null) => void;
   onDoubleClick?: (Z: number) => void;
@@ -34,7 +35,7 @@ function normalizeEN(en: number | null): number | null {
   return (en - EN_MIN) / (EN_MAX - EN_MIN);
 }
 
-export function ElementCube({ element, position, isSelected, isFocused, onSelect, onHover, onDoubleClick, overlay, entranceDelay = 0 }: Props) {
+export function ElementCube({ element, position, isSelected, isFocused, isDimmed, onSelect, onHover, onDoubleClick, overlay, entranceDelay = 0 }: Props) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   const focusRingRef = useRef<THREE.Mesh>(null);
@@ -157,48 +158,50 @@ export function ElementCube({ element, position, isSelected, isFocused, onSelect
     document.body.style.cursor = 'auto';
   }, [onHover]);
 
-  const glowIntensity = isSelected ? 1.0 : hovered ? 0.6 : 0.25;
+  const glowIntensity = isSelected ? 1.0 : hovered ? 0.6 : isDimmed ? 0.1 : 0.25;
   const currentHeight = animState.current.heightZ;
+  const baseOpacity = isDimmed ? 0.2 : (hovered || isSelected ? 0.95 : 0.75);
 
   // Color tint for heatmap overlays
   const matColor = useMemo(() => {
+    let baseColor = color;
+    
     if (overlay === 'electronegativity' || overlay === 'both') {
       const t = normalizeEN(element.en);
       if (t != null) {
         const c = new THREE.Color();
         c.setHSL(0.7 - t * 0.7, 0.85, 0.45 + t * 0.15);
-        return c;
+        baseColor = c;
       }
-    }
-    if (overlay === 'meltingPoint') {
+    } else if (overlay === 'meltingPoint') {
       const t = normalizeProperty(element.Z, 'meltingPoint');
       if (t != null) {
         const c = new THREE.Color();
-        // Blue → yellow → orange → deep red
         c.setHSL(0.58 - t * 0.58, 0.9, 0.45 + t * 0.1);
-        return c;
+        baseColor = c;
       }
-    }
-    if (overlay === 'density') {
+    } else if (overlay === 'density') {
       const t = normalizeProperty(element.Z, 'density');
       if (t != null) {
         const c = new THREE.Color();
-        // Cyan → purple → magenta
         c.setHSL(0.5 - t * 0.28, 0.7 + t * 0.15, 0.55 - t * 0.15);
-        return c;
+        baseColor = c;
       }
-    }
-    if (overlay === 'ionizationEnergy') {
+    } else if (overlay === 'ionizationEnergy') {
       const t = normalizeProperty(element.Z, 'ionizationEnergy');
       if (t != null) {
         const c = new THREE.Color();
-        // Green → yellow → orange → red
         c.setHSL(0.33 - t * 0.33, 0.75 + t * 0.15, 0.4 + t * 0.1);
-        return c;
+        baseColor = c;
       }
     }
-    return color;
-  }, [overlay, element.en, element.Z, color]);
+    
+    // Apply dimming if needed
+    if (isDimmed) {
+      return baseColor.clone().multiplyScalar(0.3);
+    }
+    return baseColor;
+  }, [overlay, element.en, element.Z, color, isDimmed]);
 
   const matEmissive = useMemo(() => matColor.clone().multiplyScalar(0.5), [matColor]);
 
@@ -221,7 +224,7 @@ export function ElementCube({ element, position, isSelected, isFocused, onSelect
           metalness={0.2}
           roughness={0.5}
           transparent
-          opacity={hovered || isSelected ? 0.95 : 0.75}
+          opacity={baseOpacity}
         />
       </mesh>
 
@@ -232,6 +235,7 @@ export function ElementCube({ element, position, isSelected, isFocused, onSelect
         color="white"
         anchorX="left"
         anchorY="bottom"
+        fillOpacity={isDimmed ? 0.3 : 1}
       >
         {String(element.Z)}
       </Text>
@@ -243,6 +247,7 @@ export function ElementCube({ element, position, isSelected, isFocused, onSelect
         color="white"
         anchorX="center"
         anchorY="bottom"
+        fillOpacity={isDimmed ? 0.3 : 1}
       >
         {element.sym}
       </Text>
@@ -255,6 +260,7 @@ export function ElementCube({ element, position, isSelected, isFocused, onSelect
         anchorX="center"
         anchorY="top"
         maxWidth={0.95}
+        fillOpacity={isDimmed ? 0.3 : 1}
       >
         {element.name.length > 10 ? element.name.slice(0, 9) + '…' : element.name}
       </Text>

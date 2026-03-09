@@ -84,13 +84,14 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
   );
 }
 
-function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleClickElement, focusedZ }: {
+function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleClickElement, focusedZ, filteredZs }: {
   overlay: TableOverlay3D;
   flyToZ: number | null;
   onFlyArrived: () => void;
   onHoverElement: (Z: number | null) => void;
   onDoubleClickElement: (Z: number) => void;
   focusedZ: number | null;
+  filteredZs: Set<number> | null;
 }) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
@@ -116,6 +117,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
           position={[x, y, z]}
           isSelected={selectedSet.has(element.Z)}
           isFocused={focusedZ === element.Z}
+          isDimmed={filteredZs !== null && !filteredZs.has(element.Z)}
           onSelect={handleSelect}
           onHover={onHoverElement}
           onDoubleClick={onDoubleClickElement}
@@ -130,7 +132,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
 }
 
 /** Search input with autocomplete dropdown */
-function FlyToSearch({ onFlyTo }: { onFlyTo: (Z: number) => void }) {
+function FlyToSearch({ onFlyTo, onQueryChange }: { onFlyTo: (Z: number) => void; onQueryChange: (query: string) => void }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -144,6 +146,11 @@ function FlyToSearch({ onFlyTo }: { onFlyTo: (Z: number) => void }) {
       String(el.Z) === q
     ).slice(0, 8);
   }, [query]);
+
+  // Update parent component when query changes
+  useEffect(() => {
+    onQueryChange(query);
+  }, [query, onQueryChange]);
 
   const handleSelect = useCallback((Z: number) => {
     onFlyTo(Z);
@@ -217,6 +224,24 @@ export function PeriodicTable3D() {
   const { selectedElements, selectElement } = useSelection();
   const [showCompare, setShowCompare] = useState(false);
   const [focusedZ, setFocusedZ] = useState<number | null>(1); // Start at Hydrogen
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter elements based on search query
+  const filteredZs = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.trim().toLowerCase();
+    const matching = ELEMENTS.filter(el =>
+      el.name.toLowerCase().includes(q) ||
+      el.sym.toLowerCase().includes(q) ||
+      el.category.toLowerCase().includes(q) ||
+      String(el.Z).includes(q)
+    );
+    return new Set(matching.map(el => el.Z));
+  }, [searchQuery]);
+
+  const handleSearchQueryChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
 
   // Auto-show comparison when exactly 2 unique elements selected
   const comparePair = useMemo(() => {
@@ -381,7 +406,7 @@ export function PeriodicTable3D() {
           <p className="text-xs text-muted-foreground mt-1 mb-2 pointer-events-none">
             Orbit • Zoom • Click to explore all 118 elements
           </p>
-          <FlyToSearch onFlyTo={handleFlyTo} />
+          <FlyToSearch onFlyTo={handleFlyTo} onQueryChange={handleSearchQueryChange} />
         </div>
 
         {/* 3D Overlay mode toggle */}
@@ -537,6 +562,7 @@ export function PeriodicTable3D() {
               onHoverElement={handleHoverElement} 
               onDoubleClickElement={handleDoubleClickElement}
               focusedZ={focusedZ}
+              filteredZs={filteredZs}
             />
           </Suspense>
         </Canvas>
