@@ -110,7 +110,7 @@ function CameraController({
       camera.position.z = Math.cos(angle) * radius;
       camera.position.y = 0.5 + Math.sin(angle * 0.5) * 3;
       const ct = controlsRef.current.target as THREE.Vector3;
-      ct.copy(TABLE_CENTER);
+      ct.set(TABLE_CENTER[0], TABLE_CENTER[1], TABLE_CENTER[2]);
       controlsRef.current.update();
       return;
     }
