@@ -62,12 +62,7 @@ function AtomViz({ element }: { element: Element }) {
         );
       })}
 
-      {/* Label */}
-      <Html center position={[0, -0.3, 0]} distanceFactor={12}>
-        <span style={{ color: '#e2e8f0', fontSize: 9, fontWeight: 700, pointerEvents: 'none', whiteSpace: 'nowrap', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
-          {element.sym}
-        </span>
-      </Html>
+
     </group>
   );
 }
