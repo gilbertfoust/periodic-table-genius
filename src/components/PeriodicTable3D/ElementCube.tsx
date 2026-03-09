@@ -224,7 +224,7 @@ export function ElementCube({ element, position, isSelected, isFocused, isDimmed
           metalness={0.2}
           roughness={0.5}
           transparent
-          opacity={hovered || isSelected ? 0.95 : 0.75}
+          opacity={baseOpacity}
         />
       </mesh>
 
