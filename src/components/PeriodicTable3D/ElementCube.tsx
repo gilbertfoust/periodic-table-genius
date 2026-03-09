@@ -35,7 +35,7 @@ function normalizeEN(en: number | null): number | null {
   return (en - EN_MIN) / (EN_MAX - EN_MIN);
 }
 
-export function ElementCube({ element, position, isSelected, isFocused, onSelect, onHover, onDoubleClick, overlay, entranceDelay = 0 }: Props) {
+export function ElementCube({ element, position, isSelected, isFocused, isDimmed, onSelect, onHover, onDoubleClick, overlay, entranceDelay = 0 }: Props) {
   const groupRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
   const focusRingRef = useRef<THREE.Mesh>(null);
