@@ -158,8 +158,9 @@ export function ElementCube({ element, position, isSelected, isFocused, isDimmed
     document.body.style.cursor = 'auto';
   }, [onHover]);
 
-  const glowIntensity = isSelected ? 1.0 : hovered ? 0.6 : 0.25;
+  const glowIntensity = isSelected ? 1.0 : hovered ? 0.6 : isDimmed ? 0.1 : 0.25;
   const currentHeight = animState.current.heightZ;
+  const baseOpacity = isDimmed ? 0.2 : (hovered || isSelected ? 0.95 : 0.75);
 
   // Color tint for heatmap overlays
   const matColor = useMemo(() => {
