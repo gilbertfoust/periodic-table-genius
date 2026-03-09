@@ -41,13 +41,27 @@ const GROUP_CAMERA_POSITIONS: Record<string, { position: THREE.Vector3; target: 
 // Pre-build lookup: Z → position
 const POSITION_BY_Z = new Map(TABLE_POSITIONS.map(p => [p.element.Z, p]));
 
-/** Smoothly animate camera + controls target to a position */
-function CameraController({ targetZ, onArrived }: { targetZ: number | null; onArrived: () => void }) {
+/** Smoothly animate camera + controls target to a position, or continuous rotation */
+function CameraController({ 
+  targetZ, 
+  onArrived, 
+  preset, 
+  onPresetComplete 
+}: { 
+  targetZ: number | null; 
+  onArrived: () => void;
+  preset: CameraPreset;
+  onPresetComplete: () => void;
+}) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
   const flyingRef = useRef(false);
   const targetPos = useRef(new THREE.Vector3());
   const targetLook = useRef(new THREE.Vector3());
+  const rotationSpeed = useRef(0);
+  const tourIndex = useRef(0);
+  const tourTimer = useRef(0);
+  const tourStops = ['alkali', 'noble', 'transition', 'lanthanide', 'halogen'];
 
   useEffect(() => {
     if (targetZ == null) return;
@@ -60,7 +74,71 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
     flyingRef.current = true;
   }, [targetZ]);
 
+  // Handle presets
+  useEffect(() => {
+    if (preset === 'rotate') {
+      rotationSpeed.current = 0.3;
+      flyingRef.current = false;
+    } else if (preset === 'tour') {
+      tourIndex.current = 0;
+      tourTimer.current = 0;
+      // Start with first stop
+      const firstStop = tourStops[0];
+      const pos = GROUP_CAMERA_POSITIONS[firstStop];
+      if (pos) {
+        targetPos.current.copy(pos.position);
+        targetLook.current.copy(pos.target);
+        flyingRef.current = true;
+      }
+    } else if (preset !== 'none' && GROUP_CAMERA_POSITIONS[preset]) {
+      const pos = GROUP_CAMERA_POSITIONS[preset];
+      targetPos.current.copy(pos.position);
+      targetLook.current.copy(pos.target);
+      flyingRef.current = true;
+      rotationSpeed.current = 0;
+    } else {
+      rotationSpeed.current = 0;
+    }
+  }, [preset]);
+
   useFrame((_, delta) => {
+    // Handle rotation preset
+    if (preset === 'rotate' && controlsRef.current) {
+      const angle = Date.now() * 0.0003;
+      const radius = 28;
+      camera.position.x = Math.sin(angle) * radius;
+      camera.position.z = Math.cos(angle) * radius;
+      camera.position.y = 0.5 + Math.sin(angle * 0.5) * 3;
+      const ct = controlsRef.current.target as THREE.Vector3;
+      ct.copy(TABLE_CENTER);
+      controlsRef.current.update();
+      return;
+    }
+
+    // Handle tour mode
+    if (preset === 'tour') {
+      tourTimer.current += delta;
+      
+      // Check if arrived at current stop
+      if (flyingRef.current && camera.position.distanceTo(targetPos.current) < 0.1) {
+        flyingRef.current = false;
+        tourTimer.current = 0; // Reset timer when arrived
+      }
+      
+      // Stay at each stop for 3 seconds
+      if (!flyingRef.current && tourTimer.current > 3) {
+        tourIndex.current = (tourIndex.current + 1) % tourStops.length;
+        const nextStop = tourStops[tourIndex.current];
+        const pos = GROUP_CAMERA_POSITIONS[nextStop];
+        if (pos) {
+          targetPos.current.copy(pos.position);
+          targetLook.current.copy(pos.target);
+          flyingRef.current = true;
+        }
+      }
+    }
+
+    // Handle smooth flying to target position
     if (!flyingRef.current) return;
     const lerp = Math.min(delta * 3, 0.12);
 
@@ -75,7 +153,9 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
     // Check if arrived
     if (camera.position.distanceTo(targetPos.current) < 0.05) {
       flyingRef.current = false;
-      onArrived();
+      if (preset !== 'tour') {
+        onArrived();
+      }
     }
   });
 
@@ -91,6 +171,7 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
       panSpeed={0.5}
       rotateSpeed={0.5}
       zoomSpeed={0.8}
+      enabled={preset === 'none'}
     />
   );
 }
