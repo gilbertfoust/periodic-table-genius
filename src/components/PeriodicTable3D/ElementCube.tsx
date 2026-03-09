@@ -13,6 +13,7 @@ interface Props {
   position: [number, number, number];
   isSelected: boolean;
   isFocused?: boolean;
+  isDimmed?: boolean;
   onSelect: (Z: number, multi: boolean) => void;
   onHover?: (Z: number | null) => void;
   onDoubleClick?: (Z: number) => void;
