@@ -296,6 +296,9 @@ function TableScene({
         />
       ))}
 
+      {/* Interactive visualization in the U-gap of the table */}
+      <CenterStageVisualization />
+
       <CameraController targetZ={flyToZ} onArrived={onFlyArrived} preset={preset} onPresetComplete={onPresetComplete} />
     </>
   );
