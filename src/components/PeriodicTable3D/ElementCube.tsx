@@ -259,6 +259,19 @@ export function ElementCube({ element, position, isSelected, isFocused, onSelect
         {element.name.length > 10 ? element.name.slice(0, 9) + '…' : element.name}
       </Text>
 
+      {/* Focus ring indicator (white pulsing ring) */}
+      <mesh ref={focusRingRef} position={[0, heightZ / 2 + 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.58, 0.66, 32]} />
+        <meshStandardMaterial
+          color="#ffffff"
+          emissive="#ffffff"
+          emissiveIntensity={1.8}
+          transparent
+          opacity={0}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
       {/* Selection glow ring */}
       {isSelected && (
         <mesh position={[0, heightZ / 2 + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
