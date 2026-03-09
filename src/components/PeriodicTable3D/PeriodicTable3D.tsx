@@ -331,20 +331,34 @@ export function PeriodicTable3D() {
   const [showCompare, setShowCompare] = useState(false);
   const [focusedZ, setFocusedZ] = useState<number | null>(1); // Start at Hydrogen
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('none');
 
-  // Filter elements based on search query
+  // Filter elements based on search query and category filter
   const filteredZs = useMemo(() => {
-    if (!searchQuery.trim()) return null;
+    const hasSearchFilter = searchQuery.trim().length > 0;
+    const hasCategoryFilter = categoryFilter !== 'all';
+    
+    if (!hasSearchFilter && !hasCategoryFilter) return null;
+    
     const q = searchQuery.trim().toLowerCase();
-    const matching = ELEMENTS.filter(el =>
-      el.name.toLowerCase().includes(q) ||
-      el.sym.toLowerCase().includes(q) ||
-      el.category.toLowerCase().includes(q) ||
-      String(el.Z).includes(q)
-    );
+    const matching = ELEMENTS.filter(el => {
+      // Check search query match
+      const matchesSearch = !hasSearchFilter || (
+        el.name.toLowerCase().includes(q) ||
+        el.sym.toLowerCase().includes(q) ||
+        el.category.toLowerCase().includes(q) ||
+        String(el.Z).includes(q)
+      );
+      
+      // Check category filter match
+      const matchesCategory = !hasCategoryFilter || el.category === categoryFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
+    
     return new Set(matching.map(el => el.Z));
-  }, [searchQuery]);
+  }, [searchQuery, categoryFilter]);
 
   const handleSearchQueryChange = useCallback((query: string) => {
     setSearchQuery(query);
