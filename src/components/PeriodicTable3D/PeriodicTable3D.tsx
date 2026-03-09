@@ -529,7 +529,14 @@ export function PeriodicTable3D() {
           gl={{ antialias: true, alpha: true }}
         >
           <Suspense fallback={null}>
-            <TableScene overlay={overlay} flyToZ={flyToZ} onFlyArrived={handleFlyArrived} onHoverElement={handleHoverElement} onDoubleClickElement={handleDoubleClickElement} />
+            <TableScene 
+              overlay={overlay} 
+              flyToZ={flyToZ} 
+              onFlyArrived={handleFlyArrived} 
+              onHoverElement={handleHoverElement} 
+              onDoubleClickElement={handleDoubleClickElement}
+              focusedZ={focusedZ}
+            />
           </Suspense>
         </Canvas>
       </div>
