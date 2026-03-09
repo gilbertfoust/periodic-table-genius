@@ -17,6 +17,8 @@ import { ElementDetailModal } from './ElementDetailModal';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both' | 'meltingPoint' | 'density' | 'ionizationEnergy';
 
+export type CameraPreset = 'none' | 'rotate' | 'alkali' | 'noble' | 'transition' | 'lanthanide' | 'halogen' | 'tour';
+
 const OVERLAY_OPTIONS: { value: TableOverlay3D; label: string; icon: typeof Layers; description: string }[] = [
   { value: 'none', label: 'Flat', icon: Layers, description: 'Uniform cubes' },
   { value: 'radius', label: 'Radius', icon: Circle, description: 'Size = atomic radius' },
@@ -26,6 +28,15 @@ const OVERLAY_OPTIONS: { value: TableOverlay3D; label: string; icon: typeof Laye
   { value: 'density', label: 'Density', icon: Weight, description: 'Height = density' },
   { value: 'ionizationEnergy', label: 'Ion. Energy', icon: Activity, description: 'Height = 1st ionization energy' },
 ];
+
+// Camera preset positions for zooming to specific element groups
+const GROUP_CAMERA_POSITIONS: Record<string, { position: THREE.Vector3; target: THREE.Vector3 }> = {
+  alkali: { position: new THREE.Vector3(-10, 0, 12), target: new THREE.Vector3(-10, 0, 0) },
+  noble: { position: new THREE.Vector3(11, 0, 12), target: new THREE.Vector3(11, 0, 0) },
+  transition: { position: new THREE.Vector3(0, 0, 18), target: new THREE.Vector3(0, 1, 0) },
+  lanthanide: { position: new THREE.Vector3(0, -6, 12), target: new THREE.Vector3(0, -6, 0) },
+  halogen: { position: new THREE.Vector3(9, 0, 12), target: new THREE.Vector3(9, 1, 0) },
+};
 
 // Pre-build lookup: Z → position
 const POSITION_BY_Z = new Map(TABLE_POSITIONS.map(p => [p.element.Z, p]));
