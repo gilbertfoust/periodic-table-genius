@@ -176,7 +176,17 @@ function CameraController({
   );
 }
 
-function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleClickElement, focusedZ, filteredZs }: {
+function TableScene({ 
+  overlay, 
+  flyToZ, 
+  onFlyArrived, 
+  onHoverElement, 
+  onDoubleClickElement, 
+  focusedZ, 
+  filteredZs,
+  preset,
+  onPresetComplete 
+}: {
   overlay: TableOverlay3D;
   flyToZ: number | null;
   onFlyArrived: () => void;
@@ -184,6 +194,8 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
   onDoubleClickElement: (Z: number) => void;
   focusedZ: number | null;
   filteredZs: Set<number> | null;
+  preset: CameraPreset;
+  onPresetComplete: () => void;
 }) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
