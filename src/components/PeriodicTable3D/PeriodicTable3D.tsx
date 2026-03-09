@@ -209,10 +209,28 @@ function TableScene({
 
   return (
     <>
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[10, 15, 10]} intensity={0.6} />
-      <directionalLight position={[-10, -5, 8]} intensity={0.3} color="#7aa7ff" />
-      <pointLight position={[0, 5, 15]} intensity={0.4} color="#66f0a6" distance={40} />
+      {/* Enhanced lighting for better visibility */}
+      <ambientLight intensity={0.55} />
+      <directionalLight position={[10, 15, 10]} intensity={0.7} />
+      <directionalLight position={[-10, -5, 8]} intensity={0.4} color="#7aa7ff" />
+      <pointLight position={[0, 5, 15]} intensity={0.5} color="#66f0a6" distance={40} />
+      <hemisphereLight intensity={0.15} color="#ffffff" groundColor="#1a1f2e" />
+
+      {/* Subtle grid for depth perception */}
+      <Grid
+        position={[0, -8, 0]}
+        args={[40, 40]}
+        cellSize={2}
+        cellThickness={0.5}
+        cellColor="#334155"
+        sectionSize={10}
+        sectionThickness={1}
+        sectionColor="#475569"
+        fadeDistance={50}
+        fadeStrength={1}
+        followCamera={false}
+        infiniteGrid={false}
+      />
 
       <Stars radius={80} depth={60} count={2500} factor={3} saturation={0.8} fade speed={0.5} />
 
