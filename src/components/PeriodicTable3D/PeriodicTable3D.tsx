@@ -132,7 +132,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
 }
 
 /** Search input with autocomplete dropdown */
-function FlyToSearch({ onFlyTo }: { onFlyTo: (Z: number) => void }) {
+function FlyToSearch({ onFlyTo, onQueryChange }: { onFlyTo: (Z: number) => void; onQueryChange: (query: string) => void }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,6 +146,11 @@ function FlyToSearch({ onFlyTo }: { onFlyTo: (Z: number) => void }) {
       String(el.Z) === q
     ).slice(0, 8);
   }, [query]);
+
+  // Update parent component when query changes
+  useEffect(() => {
+    onQueryChange(query);
+  }, [query, onQueryChange]);
 
   const handleSelect = useCallback((Z: number) => {
     onFlyTo(Z);
