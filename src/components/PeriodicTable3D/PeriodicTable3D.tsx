@@ -84,13 +84,14 @@ function CameraController({ targetZ, onArrived }: { targetZ: number | null; onAr
   );
 }
 
-function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleClickElement, focusedZ }: {
+function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleClickElement, focusedZ, filteredZs }: {
   overlay: TableOverlay3D;
   flyToZ: number | null;
   onFlyArrived: () => void;
   onHoverElement: (Z: number | null) => void;
   onDoubleClickElement: (Z: number) => void;
   focusedZ: number | null;
+  filteredZs: Set<number> | null;
 }) {
   const { selectedElements, selectElement, multiSelectMode } = useSelection();
 
