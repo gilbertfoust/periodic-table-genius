@@ -19,6 +19,38 @@ import { getShellElectrons } from '@/scenes/AtomStructureScene';
 const GAP_CENTER: [number, number, number] = [0, 5.8, 0.5];
 const STAGE_SCALE = 1.5;
 
+// ─── Animated glow ring ─────────────────────────────────────────────────────
+function GlowRing() {
+  const innerRef = useRef<THREE.Mesh>(null);
+  const outerRef = useRef<THREE.Mesh>(null);
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    const pulse = 0.92 + Math.sin(t * 1.5) * 0.08;
+    if (innerRef.current) {
+      innerRef.current.scale.setScalar(pulse);
+      (innerRef.current.material as THREE.MeshBasicMaterial).opacity = 0.12 + Math.sin(t * 2) * 0.05;
+    }
+    if (outerRef.current) {
+      outerRef.current.scale.setScalar(pulse * 1.25);
+      (outerRef.current.material as THREE.MeshBasicMaterial).opacity = 0.06 + Math.sin(t * 1.8 + 1) * 0.03;
+    }
+  });
+
+  return (
+    <group rotation={[Math.PI / 2, 0, 0]}>
+      <mesh ref={innerRef}>
+        <torusGeometry args={[1.1, 0.03, 8, 48]} />
+        <meshBasicMaterial color="#10b981" transparent opacity={0.12} />
+      </mesh>
+      <mesh ref={outerRef}>
+        <torusGeometry args={[1.3, 0.015, 8, 48]} />
+        <meshBasicMaterial color="#34d399" transparent opacity={0.06} />
+      </mesh>
+    </group>
+  );
+}
+
 // ─── Single atom visualization ──────────────────────────────────────────────
 function AtomViz({ element }: { element: Element }) {
   const groupRef = useRef<THREE.Group>(null);
