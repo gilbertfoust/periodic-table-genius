@@ -187,11 +187,8 @@ export function CenterStageVisualization() {
 
   return (
     <group position={GAP_CENTER} scale={[STAGE_SCALE, STAGE_SCALE, STAGE_SCALE]}>
-      {/* Subtle glow backdrop */}
-      <mesh>
-        <circleGeometry args={[1.2, 24]} />
-        <meshBasicMaterial color="#10b981" transparent opacity={0.03} side={THREE.DoubleSide} />
-      </mesh>
+      {/* Animated glow ring */}
+      <GlowRing />
       {content}
     </group>
   );
