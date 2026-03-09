@@ -406,7 +406,7 @@ export function PeriodicTable3D() {
           <p className="text-xs text-muted-foreground mt-1 mb-2 pointer-events-none">
             Orbit • Zoom • Click to explore all 118 elements
           </p>
-          <FlyToSearch onFlyTo={handleFlyTo} />
+          <FlyToSearch onFlyTo={handleFlyTo} onQueryChange={handleSearchQueryChange} />
         </div>
 
         {/* 3D Overlay mode toggle */}
