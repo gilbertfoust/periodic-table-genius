@@ -757,6 +757,8 @@ export function PeriodicTable3D() {
               onDoubleClickElement={handleDoubleClickElement}
               focusedZ={focusedZ}
               filteredZs={filteredZs}
+              preset={cameraPreset}
+              onPresetComplete={handlePresetComplete}
             />
           </Suspense>
         </Canvas>
