@@ -527,20 +527,97 @@ export function PeriodicTable3D() {
         </div>
 
         {/* 3D Overlay mode toggle */}
-        <div className="absolute top-4 right-4 z-10 flex flex-col gap-1">
-          {OVERLAY_OPTIONS.map(({ value, label, icon: Icon, description }) => (
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+          {/* Camera Presets */}
+          <div className="flex flex-col gap-1 bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl p-2 shadow-lg">
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-0.5">
+              Camera
+            </div>
             <Button
-              key={value}
-              variant={overlay === value ? 'default' : 'outline'}
+              variant={cameraPreset === 'rotate' ? 'default' : 'outline'}
               size="sm"
-              className="gap-1.5 text-xs justify-start min-w-[130px]"
-              onClick={() => setOverlay(value)}
-              title={description}
+              className="gap-1.5 text-xs justify-start min-w-[110px]"
+              onClick={() => handlePresetChange(cameraPreset === 'rotate' ? 'none' : 'rotate')}
+              title="Continuous rotation around table"
             >
-              <Icon className="h-3 w-3" />
-              {label}
+              <Activity className="h-3 w-3" />
+              {cameraPreset === 'rotate' ? 'Stop' : 'Rotate'}
             </Button>
-          ))}
+            <Button
+              variant={cameraPreset === 'tour' ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px]"
+              onClick={() => handlePresetChange(cameraPreset === 'tour' ? 'none' : 'tour')}
+              title="Auto-tour through element groups"
+            >
+              <Zap className="h-3 w-3" />
+              {cameraPreset === 'tour' ? 'Stop Tour' : 'Tour Mode'}
+            </Button>
+            <div className="h-px bg-border/30 my-0.5" />
+            <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
+              Groups
+            </div>
+            <Button
+              variant={cameraPreset === 'alkali' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'alkali' ? 'none' : 'alkali')}
+            >
+              Alkali Metals
+            </Button>
+            <Button
+              variant={cameraPreset === 'noble' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'noble' ? 'none' : 'noble')}
+            >
+              Noble Gases
+            </Button>
+            <Button
+              variant={cameraPreset === 'transition' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'transition' ? 'none' : 'transition')}
+            >
+              Transition
+            </Button>
+            <Button
+              variant={cameraPreset === 'halogen' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'halogen' ? 'none' : 'halogen')}
+            >
+              Halogens
+            </Button>
+            <Button
+              variant={cameraPreset === 'lanthanide' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5 text-xs justify-start min-w-[110px] h-7"
+              onClick={() => handlePresetChange(cameraPreset === 'lanthanide' ? 'none' : 'lanthanide')}
+            >
+              Lanthanides
+            </Button>
+          </div>
+
+          {/* Overlay modes */}
+          <div className="flex flex-col gap-1 bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl p-2 shadow-lg">
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-0.5">
+              Overlay
+            </div>
+            {OVERLAY_OPTIONS.map(({ value, label, icon: Icon, description }) => (
+              <Button
+                key={value}
+                variant={overlay === value ? 'default' : 'ghost'}
+                size="sm"
+                className="gap-1.5 text-xs justify-start min-w-[110px] h-8"
+                onClick={() => setOverlay(value)}
+                title={description}
+              >
+                <Icon className="h-3 w-3" />
+                {label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Hover Tooltip */}
