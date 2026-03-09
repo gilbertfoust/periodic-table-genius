@@ -230,7 +230,7 @@ function TableScene({
         />
       ))}
 
-      <CameraController targetZ={flyToZ} onArrived={onFlyArrived} />
+      <CameraController targetZ={flyToZ} onArrived={onFlyArrived} preset={preset} onPresetComplete={onPresetComplete} />
     </>
   );
 }
