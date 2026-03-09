@@ -224,6 +224,24 @@ export function PeriodicTable3D() {
   const { selectedElements, selectElement } = useSelection();
   const [showCompare, setShowCompare] = useState(false);
   const [focusedZ, setFocusedZ] = useState<number | null>(1); // Start at Hydrogen
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter elements based on search query
+  const filteredZs = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.trim().toLowerCase();
+    const matching = ELEMENTS.filter(el =>
+      el.name.toLowerCase().includes(q) ||
+      el.sym.toLowerCase().includes(q) ||
+      el.category.toLowerCase().includes(q) ||
+      String(el.Z).includes(q)
+    );
+    return new Set(matching.map(el => el.Z));
+  }, [searchQuery]);
+
+  const handleSearchQueryChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
 
   // Auto-show comparison when exactly 2 unique elements selected
   const comparePair = useMemo(() => {
