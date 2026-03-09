@@ -115,6 +115,7 @@ function TableScene({ overlay, flyToZ, onFlyArrived, onHoverElement, onDoubleCli
           element={element}
           position={[x, y, z]}
           isSelected={selectedSet.has(element.Z)}
+          isFocused={focusedZ === element.Z}
           onSelect={handleSelect}
           onHover={onHoverElement}
           onDoubleClick={onDoubleClickElement}
