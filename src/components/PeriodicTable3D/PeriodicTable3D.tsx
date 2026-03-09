@@ -11,9 +11,11 @@ import { TABLE_POSITIONS, CAMERA_START, TABLE_CENTER } from './tableLayout';
 import { ElementCube } from './ElementCube';
 import { WebGLErrorBoundary } from '@/components/TutorialCanvas/WebGLErrorBoundary';
 import { Button } from '@/components/ui/button';
-import { Layers, Circle, Zap, Combine, Search, X, Thermometer, Weight, Activity } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Layers, Circle, Zap, Combine, Search, X, Thermometer, Weight, Activity, Filter } from 'lucide-react';
 import { ElementComparison } from './ElementComparison';
 import { ElementDetailModal } from './ElementDetailModal';
+import { CATEGORY_ORDER } from '@/data/categoryColors';
 
 export type TableOverlay3D = 'none' | 'radius' | 'electronegativity' | 'both' | 'meltingPoint' | 'density' | 'ionizationEnergy';
 
