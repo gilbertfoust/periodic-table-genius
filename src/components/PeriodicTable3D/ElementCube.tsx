@@ -247,6 +247,7 @@ export function ElementCube({ element, position, isSelected, isFocused, isDimmed
         color="white"
         anchorX="center"
         anchorY="bottom"
+        fillOpacity={isDimmed ? 0.3 : 1}
       >
         {element.sym}
       </Text>
