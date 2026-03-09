@@ -562,6 +562,7 @@ export function PeriodicTable3D() {
               onHoverElement={handleHoverElement} 
               onDoubleClickElement={handleDoubleClickElement}
               focusedZ={focusedZ}
+              filteredZs={filteredZs}
             />
           </Suspense>
         </Canvas>
